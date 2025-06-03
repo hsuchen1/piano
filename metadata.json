@@ -1,0 +1,6 @@
+{
+  "name": "萬能鋼琴演奏",
+  "description": "A web application to play a virtual piano, experiment with transposition, and create and play chord accompaniments with various instrument sounds and controls.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

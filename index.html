@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Vite PWA plugin will inject manifest and theme-color based on vite.config.ts -->
+    <!-- The icon link below will be resolved from the `public` directory by Vite -->
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>互動鋼琴工作室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+      body {
+        font-family: 'Inter', 'Noto Sans TC', sans-serif; /* Added Noto Sans TC for Chinese */
+        background-color: #1f2937; /* gray-800 */
+        color: #f3f4f6; /* gray-100 */
+        overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
+      }
+      /* Custom scrollbar for webkit browsers */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px; /* For horizontal scrollbars */
+      }
+      ::-webkit-scrollbar-track {
+        background: #374151; /* gray-700 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4b5563; /* gray-600 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280; /* gray-500 */
+      }
+
+      /* Thin scrollbar utility for specific elements (if Tailwind plugin not used) */
+      .scrollbar-thin {
+        scrollbar-width: thin;
+        scrollbar-color: #4b5563 #374151; /* thumb track for Firefox */
+      }
+    </style>
+    <!-- 如果您確實有 index.css 檔案並放在 public 資料夾，可以取消註解下一行 -->
+    <!-- <link rel="stylesheet" href="/index.css"> -->
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "tone": "https://esm.sh/tone@^15.1.22",
+    "tone/": "https://esm.sh/tone@^15.1.22/",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.1",
+    "vite-plugin-pwa": "https://esm.sh/vite-plugin-pwa@^1.0.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- Vite's JavaScript entry point. vite-plugin-pwa will handle SW registration. -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
