@@ -9,12 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 // 
 // 您的 GitHub 使用者名稱 (Your GitHub Username)
 // 例如：const githubUsername = 'your-github-name';
-const githubUsername = '<hsuchen1>'; // <-- 請替換成您的 GitHub 使用者名稱
+const githubUsername = 'hsuchen1'; // <-- 請替換成您的 GitHub 使用者名稱
 
 // 您的 GitHub 儲存庫名稱 (Your GitHub Repository Name)
 // 這必須與您在 GitHub 上建立的儲存庫名稱完全一致
 // 例如：const repositoryName = 'my-interactive-piano';
-const repositoryName = '<piano>'; // <-- 請替換成您的 GitHub 儲存庫名稱
+const repositoryName = 'piano'; // <-- 請替換成您的 GitHub 儲存庫名稱
 // --- END OF IMPORTANT USER INPUT ---
 
 // 檢查用戶是否已填寫佔位符
