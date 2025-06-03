@@ -1,0 +1,25 @@
+{
+  "name": "萬能鋼琴演奏",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.1",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.0.0"
+  }
+}
