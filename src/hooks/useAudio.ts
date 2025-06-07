@@ -8,7 +8,7 @@ import {
 } from '../types';
 import {
   getNoteFullName, DEFAULT_BPM, DEFAULT_ACCOMPANIMENT_VOLUME, DEFAULT_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_INSTRUMENT,
-  ACCOMPANIMENT_SYNTH_PIANO_CONFIG, ACCOMPANIMENT_MELLOW_SYNTH_CONFIG, 
+  ACCOMPANIMENT_SYNTH_PIANO_CONFIG, ACCOMPANIMENT_MELLOW_SYNTH_CONFIG,
   ACCOMPANIMENT_GUITAR_CONFIG, USER_PIANO_SOUND_CONFIGS, DEFAULT_USER_PIANO_INSTRUMENT,
   SAMPLED_GRAND_PIANO_URLS, SAMPLED_GRAND_PIANO_BASE_URL,
   DEFAULT_ACCOMPANIMENT_RHYTHM_PATTERN, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS,
@@ -18,7 +18,7 @@ import {
 } from '../constants';
 import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils';
 import type { ChordWithIndex } from '../App';
-import type { PluckSynth, Synth, FMSynthOptions, AMSynthOptions, RecursivePartial, OmitMonophonicOptions, SynthOptions } from 'tone';
+import type { PluckSynth, Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
 const ToneRef = Tone;
 
@@ -78,7 +78,7 @@ export const useAudio = (
   const [isAudioReady, setIsAudioReady] = useState(false);
   const pianoSynth = useRef<(Tone.PolySynth<Tone.Synth> | Tone.Sampler) | null>(null);
   const userPianoVolumeNode = useRef<Tone.Volume | null>(null); // For main piano
-  const accompanimentSynth = useRef<Tone.PolySynth<Tone.Synth> | Tone.Sampler | Tone.PluckSynth | null>(null);
+  const accompanimentSynth = useRef<Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | Tone.PluckSynth | null>(null);
   const accompanimentVolumeNode = useRef<Tone.Volume | null>(null); // For chord instrument
   const accompanimentSequence = useRef<Tone.Sequence<ChordWithIndex> | null>(null);
 
@@ -91,7 +91,7 @@ export const useAudio = (
 
   const [currentTransposition, setCurrentTransposition] = useState(0);
   const [isAccompanimentPlaying, setIsAccompanimentPlaying] = useState(false);
-  
+
   const [internalChordProgression, setInternalChordProgression] = useState<ChordWithIndex[]>(progressionWithIndicesFromProps);
   const customRhythmDataRef = useRef<BeatDuration[][]>(customRhythmDataFromProps);
   const customDrumDataRef = useRef<CustomDrumProgressionData>(customDrumDataProp);
@@ -110,7 +110,7 @@ export const useAudio = (
   const currentAccompanimentRhythmPatternRef = useRef(currentAccompanimentRhythmPattern);
   const currentUserPianoInstrumentRef = useRef(currentUserPianoInstrument);
   const currentAccompanimentInstrumentRef = useRef(currentAccompanimentInstrument);
-  
+
   const drumsEnabledRef = useRef(drumsEnabledProp);
   const drumPatternRef = useRef(drumPatternProp);
   const bassEnabledRef = useRef(bassEnabledProp);
@@ -128,17 +128,17 @@ export const useAudio = (
   useEffect(() => { bassEnabledRef.current = bassEnabledProp; }, [bassEnabledProp]);
   useEffect(() => { bassPatternRef.current = bassPatternProp; }, [bassPatternProp]);
   useEffect(() => { bassInstrumentRef.current = bassInstrumentProp; }, [bassInstrumentProp]);
-  
+
   useEffect(() => { setInternalChordProgression(progressionWithIndicesFromProps); }, [progressionWithIndicesFromProps]);
   useEffect(() => { customRhythmDataRef.current = customRhythmDataFromProps; }, [customRhythmDataFromProps]);
   useEffect(() => { customDrumDataRef.current = customDrumDataProp; }, [customDrumDataProp]);
 
 
   const createAccompanimentSynthInstance = useCallback((instrument: AccompanimentInstrument, volNode: Tone.Volume) => {
-    let synth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | Tone.PluckSynth;
+    let newSynth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | Tone.PluckSynth;
     switch (instrument) {
       case AccompanimentInstrument.AcousticPiano:
-        synth = new ToneRef.Sampler({
+        newSynth = new ToneRef.Sampler({
           urls: SAMPLED_GRAND_PIANO_URLS,
           baseUrl: SAMPLED_GRAND_PIANO_BASE_URL,
           release: 1,
@@ -147,26 +147,26 @@ export const useAudio = (
           onerror: (error) => console.error('[useAudio] CRITICAL: Failed to load samples for AccompanimentInstrument.AcousticPiano:', error),
         });
         break;
-      case AccompanimentInstrument.SynthPiano: synth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_SYNTH_PIANO_CONFIG }); break;
-      case AccompanimentInstrument.MellowSynth: synth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_MELLOW_SYNTH_CONFIG }); break;
-      case AccompanimentInstrument.Guitar: synth = new ToneRef.PluckSynth(ACCOMPANIMENT_GUITAR_CONFIG); break;
-      case AccompanimentInstrument.FMSynth: 
-        synth = new ToneRef.PolySynth({ 
-            voice: ToneRef.FMSynth, 
-            options: { volume: -10, harmonicity: 3, modulationIndex: 10, oscillator: {type: "sine"}, envelope: {attack:0.01, decay:0.2, sustain:0.5, release:0.8}} as RecursivePartial<OmitMonophonicOptions<FMSynthOptions>>
-        }); 
+      case AccompanimentInstrument.SynthPiano: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_SYNTH_PIANO_CONFIG }); break;
+      case AccompanimentInstrument.MellowSynth: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_MELLOW_SYNTH_CONFIG }); break;
+      case AccompanimentInstrument.Guitar: newSynth = new ToneRef.PluckSynth(ACCOMPANIMENT_GUITAR_CONFIG); break;
+      case AccompanimentInstrument.FMSynth:
+        newSynth = new ToneRef.PolySynth({
+            voice: ToneRef.FMSynth,
+            options: { volume: -10, harmonicity: 3, modulationIndex: 10, oscillator: {type: "sine"}, envelope: {attack:0.01, decay:0.2, sustain:0.5, release:0.8}} as Partial<FMSynthOptions>
+        });
         break;
-      case AccompanimentInstrument.AMSynth: 
-        synth = new ToneRef.PolySynth({ 
-            voice: ToneRef.AMSynth, 
-            options: { volume: -10, harmonicity: 2.5, oscillator: {type:"sawtooth"}, envelope: {attack:0.02, decay:0.3, sustain:0.4, release:0.7}} as RecursivePartial<OmitMonophonicOptions<AMSynthOptions>>
-        }); 
+      case AccompanimentInstrument.AMSynth:
+        newSynth = new ToneRef.PolySynth({
+            voice: ToneRef.AMSynth,
+            options: { volume: -10, harmonicity: 2.5, oscillator: {type:"sawtooth"}, envelope: {attack:0.02, decay:0.3, sustain:0.4, release:0.7}} as Partial<AMSynthOptions>
+        });
         break;
-      case AccompanimentInstrument.PluckSynth: synth = new ToneRef.PluckSynth(ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG); break;
-      case AccompanimentInstrument.Synth: synth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG }); break;
-      default: synth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_GENERAL_SYNTH_CONFIG });
+      case AccompanimentInstrument.PluckSynth: newSynth = new ToneRef.PluckSynth(ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG); break;
+      case AccompanimentInstrument.Synth: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG }); break;
+      default: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_GENERAL_SYNTH_CONFIG });
     }
-    return synth.connect(volNode);
+    return newSynth.connect(volNode);
   }, []);
 
   const createUserPianoSynthInstance = useCallback((instrument: UserPianoInstrument, volNode: Tone.Volume) => {
@@ -236,15 +236,15 @@ export const useAudio = (
       // Main Piano Volume and Synth
       if (!userPianoVolumeNode.current || userPianoVolumeNode.current.disposed) userPianoVolumeNode.current = new ToneRef.Volume(currentUserPianoVolume).toDestination();
       if (!pianoSynth.current || (pianoSynth.current as any).disposed) createUserPianoSynthInstance(currentUserPianoInstrumentRef.current, userPianoVolumeNode.current);
-      
+
       // Accompaniment Volume and Synth
       if (!accompanimentVolumeNode.current || accompanimentVolumeNode.current.disposed) accompanimentVolumeNode.current = new ToneRef.Volume(currentVolume).toDestination();
       if (!accompanimentSynth.current || (accompanimentSynth.current as any).disposed) accompanimentSynth.current = createAccompanimentSynthInstance(currentAccompanimentInstrumentRef.current, accompanimentVolumeNode.current);
-      
+
       // Drums Volume and Synths
       if (!drumVolumeNode.current || drumVolumeNode.current.disposed) drumVolumeNode.current = new ToneRef.Volume(drumVolumeProp).toDestination();
       createDrumSynths(drumVolumeNode.current);
-      
+
       // Bass Volume and Synth
       if (!bassVolumeNode.current || bassVolumeNode.current.disposed) bassVolumeNode.current = new ToneRef.Volume(bassVolumeProp).toDestination();
       if (!bassSynth.current || (bassSynth.current as any).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
@@ -260,7 +260,7 @@ export const useAudio = (
 
     if (accompanimentSynth.current && !(accompanimentSynth.current as any).disposed) {
         if (accompanimentSynth.current instanceof ToneRef.PolySynth || accompanimentSynth.current instanceof ToneRef.Sampler) {
-            (accompanimentSynth.current as Tone.PolySynth<Tone.Synth> | Tone.Sampler).releaseAll(ToneRef.now());
+            (accompanimentSynth.current as Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler).releaseAll(ToneRef.now());
         }
         // For PluckSynth, notes decay naturally. Explicit releaseAll is not applicable in the same way.
     }
@@ -271,9 +271,9 @@ export const useAudio = (
 
 
   useEffect(() => { // Main Accompaniment Sequence Logic
-    if (!isAudioReady || !ToneRef ) { 
+    if (!isAudioReady || !ToneRef ) {
         if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.dispose(); accompanimentSequence.current = null; }
-        return; 
+        return;
     }
     if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.dispose(); accompanimentSequence.current = null; }
 
@@ -295,9 +295,9 @@ export const useAudio = (
              const customChordBeatsConfig = customRhythmDataRef.current[chordDef.originalIndex];
              if (notes.length > 0 && customChordBeatsConfig) {
                 for (let mainBeatIdx = 0; mainBeatIdx < 4; mainBeatIdx++) {
-                    const fillType = customChordBeatsConfig[mainBeatIdx]; 
+                    const fillType = customChordBeatsConfig[mainBeatIdx];
                     if (fillType === "off") continue;
-                    const actualDuration: Tone.Unit.Time = fillType; 
+                    const actualDuration: Tone.Unit.Time = fillType;
                     const hitTimeOffsetSeconds = ToneRef.Time(`0:${mainBeatIdx}:0`).toSeconds();
                     const absTime = scheduledTimeInSeconds + hitTimeOffsetSeconds;
                     accompanimentSynth.current!.triggerAttackRelease(notes as any, actualDuration, absTime);
@@ -334,7 +334,7 @@ export const useAudio = (
                                     (synth as Tone.MetalSynth).triggerAttack(drumHitTime);
                                 }
                             }, drumHitTime);
-                        } else { 
+                        } else {
                             synth.triggerAttackRelease(DRUM_NOTE_DURATION, drumHitTime);
                         }
                       }
@@ -388,7 +388,7 @@ export const useAudio = (
   const setAccompanimentBPM = useCallback((bpm: number) => { setCurrentBPM(bpm); if (isAudioReady && ToneRef) ToneRef.Transport.bpm.value = bpm; }, [isAudioReady]);
   const setAccompanimentVolume = useCallback((volume: number) => { setCurrentVolume(volume); if (isAudioReady && accompanimentVolumeNode.current && !accompanimentVolumeNode.current.disposed) accompanimentVolumeNode.current.volume.value = volume; }, [isAudioReady]);
   const setUserPianoVolume = useCallback((volume: number) => { setCurrentUserPianoVolume(volume); if (isAudioReady && userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) userPianoVolumeNode.current.volume.value = volume; }, [isAudioReady]);
-  
+
   const setAccompanimentInstrument = useCallback((instrument: AccompanimentInstrument) => {
     if (currentAccompanimentInstrumentRef.current === instrument) return;
     setCurrentAccompanimentInstrument(instrument);
@@ -396,7 +396,7 @@ export const useAudio = (
       if (accompanimentSequence.current) accompanimentSequence.current.stop(0);
       if (accompanimentSynth.current && !(accompanimentSynth.current as any).disposed) {
         if (accompanimentSynth.current instanceof ToneRef.PolySynth || accompanimentSynth.current instanceof ToneRef.Sampler) {
-          (accompanimentSynth.current as Tone.PolySynth<Tone.Synth> | Tone.Sampler).releaseAll?.(ToneRef.now());
+          (accompanimentSynth.current as Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler).releaseAll?.(ToneRef.now());
         }
         accompanimentSynth.current.dispose();
       }
@@ -405,7 +405,7 @@ export const useAudio = (
   }, [isAudioReady, createAccompanimentSynthInstance]);
 
   const setAccompanimentRhythmPattern = useCallback((pattern: AccompanimentRhythmPattern) => { setCurrentAccompanimentRhythmPattern(pattern); }, []);
-  
+
   const setUserPianoInstrument = useCallback((instrument: UserPianoInstrument) => {
     if (currentUserPianoInstrumentRef.current === instrument && !isPianoLoading) return; setCurrentUserPianoInstrument(instrument);
     if (isAudioReady && ToneRef && userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) {
@@ -414,12 +414,12 @@ export const useAudio = (
         setIsPianoLoading(true); // Will be handled by initializeAudio
     }
   }, [isAudioReady, createUserPianoSynthInstance, isPianoLoading]);
-  
+
   const setTransposition = useCallback((semitones: number) => {
     if (pianoSynth.current && !(pianoSynth.current as any).disposed && ToneRef && !isPianoLoading && pianoSynth.current instanceof ToneRef.PolySynth) {
       pianoSynth.current.releaseAll(ToneRef.now());
     }
-    activePianoNotesByKey.current.clear(); 
+    activePianoNotesByKey.current.clear();
     setCurrentTransposition(semitones);
   }, [isPianoLoading]);
 
@@ -427,7 +427,7 @@ export const useAudio = (
   const setDrumsEnabled = useCallback((enabled: boolean) => { drumsEnabledRef.current = enabled; }, []);
   const setDrumVolume = useCallback((volume: number) => { if (isAudioReady && drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.volume.value = volume; }, [isAudioReady]);
   const setDrumPattern = useCallback((pattern: DrumPattern) => { drumPatternRef.current = pattern; }, []);
-  
+
   const setBassEnabled = useCallback((enabled: boolean) => { bassEnabledRef.current = enabled; }, []);
   const setBassVolume = useCallback((volume: number) => { if (isAudioReady && bassVolumeNode.current && !bassVolumeNode.current.disposed) bassVolumeNode.current.volume.value = volume; }, [isAudioReady]);
   const setBassPattern = useCallback((pattern: BassPattern) => { bassPatternRef.current = pattern; }, []);
@@ -442,17 +442,17 @@ export const useAudio = (
   useEffect(() => { // Master cleanup
     return () => {
       if (ToneRef) { if (ToneRef.Transport.state !== 'stopped') ToneRef.Transport.stop(); ToneRef.Transport.cancel(); }
-      if (pianoSynth.current && !(pianoSynth.current as any).disposed) { 
-        if (pianoSynth.current instanceof ToneRef.PolySynth) pianoSynth.current.releaseAll(ToneRef.now()); 
-        pianoSynth.current.dispose(); 
+      if (pianoSynth.current && !(pianoSynth.current as any).disposed) {
+        if (pianoSynth.current instanceof ToneRef.PolySynth) pianoSynth.current.releaseAll(ToneRef.now());
+        pianoSynth.current.dispose();
       }
       if (userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) userPianoVolumeNode.current.dispose();
-      if (accompanimentSynth.current && !(accompanimentSynth.current as any).disposed) { 
+      if (accompanimentSynth.current && !(accompanimentSynth.current as any).disposed) {
         if (accompanimentSynth.current instanceof ToneRef.PolySynth || accompanimentSynth.current instanceof ToneRef.Sampler ) {
-           (accompanimentSynth.current as Tone.PolySynth<Tone.Synth> | Tone.Sampler).releaseAll?.(ToneRef.now());
+           (accompanimentSynth.current as Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler).releaseAll?.(ToneRef.now());
         }
         // PluckSynth does not have releaseAll.
-        accompanimentSynth.current.dispose(); 
+        accompanimentSynth.current.dispose();
       }
       if (accompanimentVolumeNode.current && !accompanimentVolumeNode.current.disposed) accompanimentVolumeNode.current.dispose();
       if (drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.dispose();
