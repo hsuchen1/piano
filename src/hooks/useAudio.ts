@@ -16,7 +16,7 @@ import {
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
   ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG, ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
 } from '../constants';
-import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils'; // Changed import path
+import { getChordNotes, getBassNotesForPattern } from '../utils'; // Changed to use barrel file
 import type { ChordWithIndex } from '../App';
 import type { PluckSynth, Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
