@@ -1,8 +1,7 @@
 
 import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern } from './types';
 import * as Tone from 'tone';
-import type { RecursivePartial } from 'tone/build/esm/core/util/Interface';
-import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions } from 'tone';
+import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorSynthOptions, EnvelopeOptions } from 'tone';
 
 
 const ToneRef = Tone;
@@ -144,12 +143,12 @@ export const DRUM_PATTERN_OPTIONS: { value: DrumPattern; label: string }[] = [
     { value: DrumPattern.Custom, label: "自訂 (Custom)" },
 ];
 
-export const DRUM_SYNTH_CONFIGS: Record<DrumInstrument, RecursivePartial<MembraneSynthOptions | NoiseSynthOptions | MetalSynthOptions>> = {
-  [DrumInstrument.Kick]: { pitchDecay: 0.05, octaves: 10, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential" }, volume: 0 } as RecursivePartial<MembraneSynthOptions>,
-  [DrumInstrument.Snare]: { noise: { type: "white", playbackRate: 3 }, envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 }, volume: -5 } as RecursivePartial<NoiseSynthOptions>,
-  [DrumInstrument.HiHatClosed]: { noise: { type: "pink", playbackRate: 5 }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08 }, volume: -15 } as RecursivePartial<NoiseSynthOptions>,
-  [DrumInstrument.Tom1]: { pitchDecay: 0.08, octaves: 4, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 }, volume: -3 } as RecursivePartial<MembraneSynthOptions>,
-  [DrumInstrument.CrashCymbal]: { frequency: 200, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5, envelope: { attack: 0.001, decay: 1.0, release: 1.0 }, volume: -10 } as RecursivePartial<MetalSynthOptions>, 
+export const DRUM_SYNTH_CONFIGS: Record<DrumInstrument, Partial<MembraneSynthOptions | NoiseSynthOptions | MetalSynthOptions>> = {
+  [DrumInstrument.Kick]: { pitchDecay: 0.05, octaves: 10, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential" }, volume: 0 },
+  [DrumInstrument.Snare]: { noise: { type: "white", playbackRate: 3 }, envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 }, volume: -5 },
+  [DrumInstrument.HiHatClosed]: { noise: { type: "pink", playbackRate: 5 }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08 }, volume: -15 },
+  [DrumInstrument.Tom1]: { pitchDecay: 0.08, octaves: 4, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 }, volume: -3 },
+  [DrumInstrument.CrashCymbal]: { frequency: 200, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5, envelope: { attack: 0.001, decay: 1.0, release: 1.0 }, volume: -10 },
 };
 
 // --- Bass Instrument Options & Sound Configs ---
@@ -167,7 +166,7 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
     { value: BassPattern.WalkingBassSimple, label: "簡易行走貝斯 (Simple Walking Bass)" },
 ];
 
-export const BASS_SYNTH_CONFIGS: Record<BassInstrument, RecursivePartial<MonoSynthOptions>> = {
+export const BASS_SYNTH_CONFIGS: Record<BassInstrument, Partial<MonoSynthOptions>> = {
   [BassInstrument.ElectricBass]: {
     oscillator: { type: 'fatsawtooth', count: 2, spread: 10 },
     envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5 },
@@ -182,7 +181,7 @@ export const BASS_SYNTH_CONFIGS: Record<BassInstrument, RecursivePartial<MonoSyn
     filter: { type: 'lowpass', Q: 3 },
     volume: -8,
   },
-  [BassInstrument.AcousticBass]: { 
+  [BassInstrument.AcousticBass]: {
     oscillator: { type: 'sine' },
      envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.4 },
     filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.05, baseFrequency: 300, octaves: 2, release: 0.5 },
@@ -202,7 +201,7 @@ const createPattern = (kickBeats: number[] = [], snareBeats: number[] = [], hiHa
 
   const setBeats = (instrument: DrumInstrument, beats: number[]) => {
     if (!pattern[instrument]) return;
-    beats.forEach(beatSubdiv => { 
+    beats.forEach(beatSubdiv => {
       const beatIndex = Math.floor(beatSubdiv / NUM_SUBDIVISIONS_PER_DRUM_BEAT);
       const subIndex = beatSubdiv % NUM_SUBDIVISIONS_PER_DRUM_BEAT;
       if (pattern[instrument]![beatIndex]) {
@@ -230,22 +229,22 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
 
 export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>, ToneSynthOptions> = {
   [UserPianoInstrument.ClassicGrand]: {
-    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3 },
     envelope: { attack: 0.005, decay: 0.7, sustain: 0.1, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -6
   },
   [UserPianoInstrument.BrightUpright]: {
-    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0 },
     envelope: { attack: 0.008, decay: 0.5, sustain: 0.05, release: 0.6, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -7
   },
   [UserPianoInstrument.ElectricPiano]: {
-    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square', volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square' },
     envelope: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.2, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -5
   },
   [UserPianoInstrument.SimpleSynth]: {
-    oscillator: { type: 'triangle8', phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+    oscillator: { type: 'triangle8', phase: 0 },
     envelope: { attack: 0.01, decay: 0.15, sustain: 0.25, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -8
   },
@@ -256,26 +255,26 @@ export const SAMPLED_GRAND_PIANO_BASE_URL = 'https://tonejs.github.io/audio/sala
 
 // Accompaniment Synth Configs
 export const ACCOMPANIMENT_SYNTH_PIANO_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0 },
   envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
 export const ACCOMPANIMENT_MELLOW_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3 },
   envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1.0, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -7
 };
-export const ACCOMPANIMENT_GUITAR_CONFIG: RecursivePartial<PluckSynthOptions> = { attackNoise: 1, dampening: 4000, resonance: 0.7, release: 0.8, volume: -6 };
-export const ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG: RecursivePartial<PluckSynthOptions> = { attackNoise: 0.8, dampening: 3000, resonance: 0.75, release: 0.7, volume: -7 };
+export const ACCOMPANIMENT_GUITAR_CONFIG: Partial<PluckSynthOptions> = { attackNoise: 1, dampening: 4000, resonance: 0.7, release: 0.8, volume: -6 };
+export const ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG: Partial<PluckSynthOptions> = { attackNoise: 0.8, dampening: 3000, resonance: 0.75, release: 0.7, volume: -7 };
 
 export const ACCOMPANIMENT_GENERAL_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: "sawtooth", phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+  oscillator: { type: "sawtooth", phase: 0 },
   envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -9
 };
 // This was previously ACCOMPANIMENT_PLUCKY_SYNTH_CONFIG, but it's a triangle synth, suitable for a general "Synth" sound.
 export const ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'triangle', phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
+  oscillator: { type: 'triangle', phase: 0 },
   envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
@@ -290,15 +289,15 @@ export const getNoteFullName = (noteName: NoteName, octave: number, transpose: n
   return `${newNoteName}${newOctave}`;
 };
 
-export const BASE_KEYBOARD_OCTAVE = START_OCTAVE + 1; 
+export const BASE_KEYBOARD_OCTAVE = START_OCTAVE + 1;
 export const KEY_MAPPING: { [key: string]: { note: NoteName; octave: number } } = {
   'z': { note: 'C', octave: BASE_KEYBOARD_OCTAVE }, 's': { note: 'C#', octave: BASE_KEYBOARD_OCTAVE }, 'x': { note: 'D', octave: BASE_KEYBOARD_OCTAVE }, 'd': { note: 'D#', octave: BASE_KEYBOARD_OCTAVE }, 'c': { note: 'E', octave: BASE_KEYBOARD_OCTAVE }, 'v': { note: 'F', octave: BASE_KEYBOARD_OCTAVE }, 'g': { note: 'F#', octave: BASE_KEYBOARD_OCTAVE }, 'b': { note: 'G', octave: BASE_KEYBOARD_OCTAVE }, 'h': { note: 'G#', octave: BASE_KEYBOARD_OCTAVE }, 'n': { note: 'A', octave: BASE_KEYBOARD_OCTAVE }, 'j': { note: 'A#', octave: BASE_KEYBOARD_OCTAVE }, 'm': { note: 'B', octave: BASE_KEYBOARD_OCTAVE },
   ',': { note: 'C', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'l': { note: 'C#', octave: BASE_KEYBOARD_OCTAVE + 1 }, '.': { note: 'D', octave: BASE_KEYBOARD_OCTAVE + 1 }, ';': { note: 'D#', octave: BASE_KEYBOARD_OCTAVE + 1 }, '/': { note: 'E', octave: BASE_KEYBOARD_OCTAVE + 1 },
   'q': { note: 'C', octave: BASE_KEYBOARD_OCTAVE + 1 }, '2': { note: 'C#', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'w': { note: 'D', octave: BASE_KEYBOARD_OCTAVE + 1 }, '3': { note: 'D#', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'e': { note: 'E', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'r': { note: 'F', octave: BASE_KEYBOARD_OCTAVE + 1 }, '5': { note: 'F#', octave: BASE_KEYBOARD_OCTAVE + 1 }, 't': { note: 'G', octave: BASE_KEYBOARD_OCTAVE + 1 }, '6': { note: 'G#', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'y': { note: 'A', octave: BASE_KEYBOARD_OCTAVE + 1 }, '7': { note: 'A#', octave: BASE_KEYBOARD_OCTAVE + 1 }, 'u': { note: 'B', octave: BASE_KEYBOARD_OCTAVE + 1 },
   'i': { note: 'C', octave: BASE_KEYBOARD_OCTAVE + 2 }, '9': { note: 'C#', octave: BASE_KEYBOARD_OCTAVE + 2 }, 'o': { note: 'D', octave: BASE_KEYBOARD_OCTAVE + 2 }, '0': { note: 'D#', octave: BASE_KEYBOARD_OCTAVE + 2 }, 'p': { note: 'E', octave: BASE_KEYBOARD_OCTAVE + 2 },
   '[': { note: 'F', octave: BASE_KEYBOARD_OCTAVE + 2 }, '=': { note: 'F#', octave: BASE_KEYBOARD_OCTAVE + 2 }, ']': { note: 'G', octave: BASE_KEYBOARD_OCTAVE + 2 }, 'backspace': { note: 'G#', octave: BASE_KEYBOARD_OCTAVE + 2 }, '\\':{ note: 'A', octave: BASE_KEYBOARD_OCTAVE + 2 },
-  'shift': { note: 'B', octave: BASE_KEYBOARD_OCTAVE - 1 }, 
-  'tab': { note: 'B', octave: BASE_KEYBOARD_OCTAVE },     
+  'shift': { note: 'B', octave: BASE_KEYBOARD_OCTAVE - 1 },
+  'tab': { note: 'B', octave: BASE_KEYBOARD_OCTAVE },
 };
 
 export const DEFAULT_CUSTOM_BEAT_DURATION: BeatDuration = "off";
