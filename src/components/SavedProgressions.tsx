@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { ChordDefinition } from '../types';
+import { SavedProgressionEntry } from '../types'; // Updated import
 
 interface SavedProgressionsProps {
-  savedProgressions: Record<string, ChordDefinition[]>;
+  savedProgressions: Record<string, SavedProgressionEntry>; // Updated type
   onLoadProgression: (name: string) => void;
   onDeleteProgression: (name: string) => void;
 }
