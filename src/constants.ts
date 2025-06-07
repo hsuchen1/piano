@@ -230,22 +230,22 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
 
 export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>, ToneSynthOptions> = {
   [UserPianoInstrument.ClassicGrand]: {
-    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3, volume: 0, mute: false },
+    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
     envelope: { attack: 0.005, decay: 0.7, sustain: 0.1, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -6
   },
   [UserPianoInstrument.BrightUpright]: {
-    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0, volume: 0, mute: false },
+    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
     envelope: { attack: 0.008, decay: 0.5, sustain: 0.05, release: 0.6, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -7
   },
   [UserPianoInstrument.ElectricPiano]: {
-    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square', volume: 0, mute: false },
+    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square', volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
     envelope: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.2, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -5
   },
   [UserPianoInstrument.SimpleSynth]: {
-    oscillator: { type: 'triangle8', phase: 0, volume: 0, mute: false },
+    oscillator: { type: 'triangle8', phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
     envelope: { attack: 0.01, decay: 0.15, sustain: 0.25, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -8
   },
@@ -256,12 +256,12 @@ export const SAMPLED_GRAND_PIANO_BASE_URL = 'https://tonejs.github.io/audio/sala
 
 // Accompaniment Synth Configs
 export const ACCOMPANIMENT_SYNTH_PIANO_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0, volume: 0, mute: false },
+  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
   envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
 export const ACCOMPANIMENT_MELLOW_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3, volume: 0, mute: false },
+  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
   envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1.0, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -7
 };
@@ -269,13 +269,13 @@ export const ACCOMPANIMENT_GUITAR_CONFIG: RecursivePartial<PluckSynthOptions> = 
 export const ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG: RecursivePartial<PluckSynthOptions> = { attackNoise: 0.8, dampening: 3000, resonance: 0.75, release: 0.7, volume: -7 };
 
 export const ACCOMPANIMENT_GENERAL_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: "sawtooth", phase: 0, volume: 0, mute: false },
+  oscillator: { type: "sawtooth", phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
   envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -9
 };
 // This was previously ACCOMPANIMENT_PLUCKY_SYNTH_CONFIG, but it's a triangle synth, suitable for a general "Synth" sound.
 export const ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG: ToneSynthOptions = {
-  oscillator: { type: 'triangle', phase: 0, volume: 0, mute: false },
+  oscillator: { type: 'triangle', phase: 0, volume: 0, mute: false, onstop: () => {} } as RecursivePartial<OmniOscillatorOptions>,
   envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
