@@ -1,7 +1,7 @@
 
 import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern } from './types';
 import * as Tone from 'tone';
-import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorSynthOptions, EnvelopeOptions } from 'tone';
+import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, OscillatorType, EnvelopeCurve } from 'tone';
 
 
 const ToneRef = Tone;
@@ -144,11 +144,33 @@ export const DRUM_PATTERN_OPTIONS: { value: DrumPattern; label: string }[] = [
 ];
 
 export const DRUM_SYNTH_CONFIGS: Record<DrumInstrument, Partial<MembraneSynthOptions | NoiseSynthOptions | MetalSynthOptions>> = {
-  [DrumInstrument.Kick]: { pitchDecay: 0.05, octaves: 10, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential" }, volume: 0 },
-  [DrumInstrument.Snare]: { noise: { type: "white", playbackRate: 3 }, envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 }, volume: -5 },
-  [DrumInstrument.HiHatClosed]: { noise: { type: "pink", playbackRate: 5 }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08 }, volume: -15 },
-  [DrumInstrument.Tom1]: { pitchDecay: 0.08, octaves: 4, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 }, volume: -3 },
-  [DrumInstrument.CrashCymbal]: { frequency: 200, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5, envelope: { attack: 0.001, decay: 1.0, release: 1.0 }, volume: -10 },
+  [DrumInstrument.Kick]: {
+    pitchDecay: 0.05, octaves: 10,
+    oscillator: { type: "sine" as OscillatorType } as OmniOscillatorOptions,
+    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve } as EnvelopeOptions,
+    volume: 0
+  },
+  [DrumInstrument.Snare]: {
+    noise: { type: "white" as NoiseType, playbackRate: 3 },
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "linear" as EnvelopeCurve } as EnvelopeOptions,
+    volume: -5
+  },
+  [DrumInstrument.HiHatClosed]: {
+    noise: { type: "pink" as NoiseType, playbackRate: 5 },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "linear" as EnvelopeCurve } as EnvelopeOptions,
+    volume: -15
+  },
+  [DrumInstrument.Tom1]: {
+    pitchDecay: 0.08, octaves: 4,
+    oscillator: { type: "sine" as OscillatorType } as OmniOscillatorOptions,
+    envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve } as EnvelopeOptions,
+    volume: -3
+  },
+  [DrumInstrument.CrashCymbal]: { // MetalSynthOptions['envelope'] is Partial<EnvelopeOptions>, but errors might be strict
+    frequency: 200, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
+    envelope: { attack: 0.001, decay: 1.0, sustain: 0, release: 1.0, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve },
+    volume: -10
+  },
 };
 
 // --- Bass Instrument Options & Sound Configs ---
@@ -168,24 +190,24 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
 
 export const BASS_SYNTH_CONFIGS: Record<BassInstrument, Partial<MonoSynthOptions>> = {
   [BassInstrument.ElectricBass]: {
-    oscillator: { type: 'fatsawtooth', count: 2, spread: 10 },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5 },
-    filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.1, baseFrequency: 200, octaves: 2.6, release: 0.8 },
-    filter: { type: 'lowpass', Q: 2 },
+    oscillator: { type: 'fatsawtooth' as OscillatorType, count: 2, spread: 10 } as OmniOscillatorOptions,
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve } as EnvelopeOptions,
+    filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.1, baseFrequency: 200, octaves: 2.6, release: 0.8, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 } as FrequencyEnvelopeOptions,
+    filter: { type: 'lowpass', Q: 2, frequency: 1200, rolloff: -12 as const, detune:0, gain:0 } as FilterOptions,
     volume: -6,
   },
   [BassInstrument.SynthBass]: {
-    oscillator: { type: 'square' },
-    envelope: { attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.4 },
-    filterEnvelope: { attack: 0.02, decay: 0.05, sustain: 0.2, baseFrequency: 100, octaves: 3, release: 1 },
-    filter: { type: 'lowpass', Q: 3 },
+    oscillator: { type: 'square' as OscillatorType } as OmniOscillatorOptions,
+    envelope: { attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve } as EnvelopeOptions,
+    filterEnvelope: { attack: 0.02, decay: 0.05, sustain: 0.2, baseFrequency: 100, octaves: 3, release: 1, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 } as FrequencyEnvelopeOptions,
+    filter: { type: 'lowpass', Q: 3, frequency: 800, rolloff: -12 as const, detune: 0, gain: 0 } as FilterOptions,
     volume: -8,
   },
   [BassInstrument.AcousticBass]: {
-    oscillator: { type: 'sine' },
-     envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.4 },
-    filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.05, baseFrequency: 300, octaves: 2, release: 0.5 },
-    filter: { type: 'lowpass', Q: 1.5 },
+    oscillator: { type: 'sine' as OscillatorType } as OmniOscillatorOptions,
+    envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve } as EnvelopeOptions,
+    filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.05, baseFrequency: 300, octaves: 2, release: 0.5, attackCurve: 'linear'as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 } as FrequencyEnvelopeOptions,
+    filter: { type: 'lowpass', Q: 1.5, frequency: 1000, rolloff: -12 as const, detune: 0, gain: 0 } as FilterOptions,
     volume: -4,
   }
 };
@@ -227,6 +249,8 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
 };
 
 
+// For SynthOptions, oscillator and envelope are Partial. So, less explicit properties are needed if defaults are okay.
+// However, errors were strict, so adding curves to envelopes for consistency.
 export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>, ToneSynthOptions> = {
   [UserPianoInstrument.ClassicGrand]: {
     oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3 },
@@ -254,6 +278,7 @@ export const SAMPLED_GRAND_PIANO_URLS: Record<string, string> = { 'A0': 'A0.mp3'
 export const SAMPLED_GRAND_PIANO_BASE_URL = 'https://tonejs.github.io/audio/salamander/';
 
 // Accompaniment Synth Configs
+// For SynthOptions, oscillator and envelope are Partial.
 export const ACCOMPANIMENT_SYNTH_PIANO_CONFIG: ToneSynthOptions = {
   oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0 },
   envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
@@ -272,7 +297,6 @@ export const ACCOMPANIMENT_GENERAL_SYNTH_CONFIG: ToneSynthOptions = {
   envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -9
 };
-// This was previously ACCOMPANIMENT_PLUCKY_SYNTH_CONFIG, but it's a triangle synth, suitable for a general "Synth" sound.
 export const ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG: ToneSynthOptions = {
   oscillator: { type: 'triangle', phase: 0 },
   envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
