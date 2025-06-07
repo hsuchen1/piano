@@ -3,33 +3,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// --- VERY IMPORTANT ---
-// ----  用戶請務必填寫以下兩個變數！ ----
-// ----  USER: YOU MUST FILL IN THESE TWO VARIABLES! ----
-// 
-// 您的 GitHub 使用者名稱 (Your GitHub Username)
-// 例如：const githubUsername = 'your-github-name';
-const githubUsername = 'hsuchen1'; // <-- 請替換成您的 GitHub 使用者名稱
+// --- GitHub Pages 設定 ---
+// 您的 GitHub 使用者名稱
+const githubUsername = 'hsuchen1'; // 已根據使用者資訊填寫
 
-// 您的 GitHub 儲存庫名稱 (Your GitHub Repository Name)
-// 這必須與您在 GitHub 上建立的儲存庫名稱完全一致
-// 例如：const repositoryName = 'my-interactive-piano';
-const repositoryName = 'piano'; // <-- 請替換成您的 GitHub 儲存庫名稱
-// --- END OF IMPORTANT USER INPUT ---
-
-// 檢查用戶是否已填寫佔位符
-if (githubUsername === '<YOUR_GITHUB_USERNAME>' || repositoryName === '<YOUR_REPOSITORY_NAME>') {
-  console.warn(
-    '\n\n⚠️  警告：請務必在 `vite.config.ts` 中填寫您的 `githubUsername` 和 `repositoryName`！\n' +
-    '⚠️  WARNING: Please fill in your `githubUsername` and `repositoryName` in `vite.config.ts`!\n\n'
-  );
-}
+// 您的 GitHub 儲存庫名稱
+const repositoryName = 'piano';    // 已根據使用者資訊填寫
+// --- END ---
 
 // 設定基礎路徑。對於 GitHub Pages，它通常是 /<儲存庫名稱>/
 // 在開發模式下，基礎路徑是 '/'
-const base = process.env.NODE_ENV === 'production' && repositoryName !== '<YOUR_REPOSITORY_NAME>' 
-             ? `/${repositoryName}/` 
-             : '/';
+const base = process.env.NODE_ENV === 'production' ? `/${repositoryName}/` : '/';
 
 export default defineConfig({
   base: base,
@@ -66,35 +50,9 @@ export default defineConfig({
           },
         ],
       },
-      // Workbox 選項可以進一步自訂快取策略
-      // 預設的 `generateSW` 策略通常能很好地處理常見資源的快取
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'], // 確保快取所有必要的靜態資源
-        // 如果您的採樣音訊檔案 (如鋼琴音源) 也想透過 Service Worker 快取 (可能會很大)
-        // 您可以在這裡加入它們的路徑，或者使用 runtimeCaching
-        // runtimeCaching: [
-        //   {
-        //     urlPattern: /^https:\/\/tonejs\.github\.io\/audio\/salamander\/.*/i,
-        //     handler: 'CacheFirst',
-        //     options: {
-        //       cacheName: 'salamander-piano-samples',
-        //       expiration: {
-        //         maxEntries: 50, // 最多快取 50 個音訊檔案
-        //         maxAgeSeconds: 60 * 60 * 24 * 30 // 快取 30 天
-        //       },
-        //       cacheableResponse: {
-        //         statuses: [0, 200]
-        //       }
-        //     }
-        //   }
-        // ]
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'], 
       }
     }),
   ],
-  // 如果您將來需要使用環境變數 (例如 API 金鑰)
-  // 並希望在 GitHub Actions 中設定 Secret (例如 VITE_GEMINI_API_KEY)
-  // 可以在這裡定義，使其在程式碼中可用 (import.meta.env.VITE_GEMINI_API_KEY)
-  // define: {
-  //   'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY)
-  // }
 });

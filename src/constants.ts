@@ -1,7 +1,7 @@
 
 import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern } from './types';
 import * as Tone from 'tone';
-import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions } from 'tone';
+import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions, FilterType as ToneFilterType } from 'tone';
 
 
 const ToneRef = Tone;
@@ -152,29 +152,29 @@ export const DRUM_SYNTH_CONFIGS: {
 } = {
   [DrumInstrument.Kick]: {
     pitchDecay: 0.05, octaves: 10,
-    oscillator: { type: "sine" as const },
-    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve },
+    oscillator: { type: "sine" as const, phase: 0 },
+    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential", releaseCurve: "exponential", decayCurve: "exponential" },
     volume: 0
   },
   [DrumInstrument.Snare]: {
-    noise: { type: "white" as const, playbackRate: 3 }, // fadeIn, fadeOut default to 0
-    envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "linear" as EnvelopeCurve },
+    noise: { type: "white" as const, playbackRate: 3, fadeIn: 0, fadeOut: 0 },
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "linear" },
     volume: -5
   },
   [DrumInstrument.HiHatClosed]: {
-    noise: { type: "pink" as const, playbackRate: 5 }, // fadeIn, fadeOut default to 0
-    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "linear" as EnvelopeCurve },
+    noise: { type: "pink" as const, playbackRate: 5, fadeIn: 0, fadeOut: 0 },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "linear" },
     volume: -15
   },
   [DrumInstrument.Tom1]: {
     pitchDecay: 0.08, octaves: 4,
-    oscillator: { type: "sine" as const },
-    envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve },
+    oscillator: { type: "sine" as const, phase: 0 },
+    envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "exponential" },
     volume: -3
   },
   [DrumInstrument.CrashCymbal]: {
     harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
-    envelope: { attack: 0.001, decay: 1.0, sustain: 0, release: 1.0, attackCurve: "linear" as EnvelopeCurve, releaseCurve: "exponential" as EnvelopeCurve, decayCurve: "exponential" as EnvelopeCurve },
+    envelope: { attack: 0.001, decay: 1.0, sustain: 0, release: 1.0, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "exponential" },
     volume: -10
   },
 };
@@ -197,24 +197,24 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
 
 export const BASS_SYNTH_CONFIGS: Record<BassInstrument, Partial<MonoSynthOptions>> = {
   [BassInstrument.ElectricBass]: {
-    oscillator: { type: 'fatsawtooth' as const, count: 2, spread: 10 },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve },
-    filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.1, baseFrequency: 200, octaves: 2.6, release: 0.8, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 },
-    filter: { type: 'lowpass' as Filter["type"], Q: 2, frequency: 1200, rolloff: -12 as const, detune:0, gain:0 },
+    oscillator: { type: 'fatsawtooth' as const, count: 2, spread: 10, phase: 0 },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential' },
+    filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.1, baseFrequency: 200, octaves: 2.6, release: 0.8, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential', exponent: 2 },
+    filter: { type: 'lowpass' as const, Q: 2, frequency: 1200, rolloff: -12 as const, detune:0, gain:0 },
     volume: -6,
   },
   [BassInstrument.SynthBass]: {
-    oscillator: { type: 'square' as const },
-    envelope: { attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve },
-    filterEnvelope: { attack: 0.02, decay: 0.05, sustain: 0.2, baseFrequency: 100, octaves: 3, release: 1, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 },
-    filter: { type: 'lowpass' as Filter["type"], Q: 3, frequency: 800, rolloff: -12 as const, detune: 0, gain: 0 },
+    oscillator: { type: 'square' as const, phase: 0 },
+    envelope: { attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.4, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential' },
+    filterEnvelope: { attack: 0.02, decay: 0.05, sustain: 0.2, baseFrequency: 100, octaves: 3, release: 1, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential', exponent: 2 },
+    filter: { type: 'lowpass' as const, Q: 3, frequency: 800, rolloff: -12 as const, detune: 0, gain: 0 },
     volume: -8,
   },
   [BassInstrument.AcousticBass]: {
-    oscillator: { type: 'sine' as const },
-    envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve },
-    filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.05, baseFrequency: 300, octaves: 2, release: 0.5, attackCurve: 'linear' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, exponent: 2 },
-    filter: { type: 'lowpass' as Filter["type"], Q: 1.5, frequency: 1000, rolloff: -12 as const, detune: 0, gain: 0 },
+    oscillator: { type: 'sine' as const, phase: 0 },
+    envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.4, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential' },
+    filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.05, baseFrequency: 300, octaves: 2, release: 0.5, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential', exponent: 2 },
+    filter: { type: 'lowpass' as const, Q: 1.5, frequency: 1000, rolloff: -12 as const, detune: 0, gain: 0 },
     volume: -4,
   }
 };
@@ -259,22 +259,22 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
 export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>, Partial<ToneSynthOptions>> = {
   [UserPianoInstrument.ClassicGrand]: {
     oscillator: { type: 'fatsine' as const, phase: 0, spread: 30, count: 3 },
-    envelope: { attack: 0.005, decay: 0.7, sustain: 0.1, release: 0.8, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+    envelope: { attack: 0.005, decay: 0.7, sustain: 0.1, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -6
   },
   [UserPianoInstrument.BrightUpright]: {
     oscillator: { type: 'fatsquare' as const, spread:15, count: 2, phase: 0 },
-    envelope: { attack: 0.008, decay: 0.5, sustain: 0.05, release: 0.6, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+    envelope: { attack: 0.008, decay: 0.5, sustain: 0.05, release: 0.6, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -7
   },
   [UserPianoInstrument.ElectricPiano]: {
     oscillator: { type: 'fmsine' as const, harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square' as const },
-    envelope: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.2, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+    envelope: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.2, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -5
   },
   [UserPianoInstrument.SimpleSynth]: {
-    oscillator: { type: 'triangle' as const, phase: 0 }, // Changed from 'triangle8'
-    envelope: { attack: 0.01, decay: 0.15, sustain: 0.25, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+    oscillator: { type: 'triangle' as const, phase: 0 }, 
+    envelope: { attack: 0.01, decay: 0.15, sustain: 0.25, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -8
   },
 };
@@ -285,12 +285,12 @@ export const SAMPLED_GRAND_PIANO_BASE_URL = 'https://tonejs.github.io/audio/sala
 // Accompaniment Synth Configs
 export const ACCOMPANIMENT_SYNTH_PIANO_CONFIG: Partial<ToneSynthOptions> = {
   oscillator: { type: 'fatsawtooth' as const, count: 3, spread: 20, phase: 0 },
-  envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+  envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
 export const ACCOMPANIMENT_MELLOW_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
   oscillator: { type: 'fatsine' as const, phase: 0, spread: 20, count: 3 },
-  envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1.0, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+  envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1.0, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -7
 };
 export const ACCOMPANIMENT_GUITAR_CONFIG: Partial<PluckSynthOptions> = { attackNoise: 1, dampening: 4000, resonance: 0.7, release: 0.8, volume: -6 };
@@ -298,12 +298,12 @@ export const ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG: Partial<PluckSynthOptions> 
 
 export const ACCOMPANIMENT_GENERAL_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
   oscillator: { type: "sawtooth" as const, phase: 0 },
-  envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+  envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -9
 };
 export const ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
   oscillator: { type: 'triangle' as const, phase: 0 },
-  envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear' as EnvelopeCurve, decayCurve: 'exponential' as EnvelopeCurve, releaseCurve: 'exponential' as EnvelopeCurve },
+  envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
 
