@@ -44,10 +44,19 @@ const ChordSelector: React.FC<ChordSelectorProps> = ({ onAddChord }) => {
           onChange={(e) => setChordType(e.target.value as ChordType)}
           className="w-full p-2.5 bg-gray-600 border border-gray-500 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors"
         >
-          {Object.entries(ChordType).map(([key, value]) => (
-            // Key is like "Major", value is like "Maj". Displaying key for user-friendliness.
-            <option key={value} value={value}>{key} ({value})</option> 
-          ))}
+          {Object.entries(ChordType).map(([key, value]) => {
+            let displayName = key;
+            if (value === ChordType.Minor7thFlat5) displayName = "Minor 7th b5 (ø)";
+            else if (value === ChordType.Diminished7th) displayName = "Diminished 7th";
+            else if (value === ChordType.Major) displayName = "Major";
+            else if (value === ChordType.Minor) displayName = "Minor";
+            else if (value === ChordType.Dominant7th) displayName = "Dominant 7th";
+            else if (value === ChordType.Minor7th) displayName = "Minor 7th";
+            else if (value === ChordType.Major7th) displayName = "Major 7th";
+            return (
+              <option key={value} value={value}>{displayName} ({value})</option>
+            );
+          })}
         </select>
       </div>
       <button
