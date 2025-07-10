@@ -478,9 +478,13 @@ export const useAudio = (
             internalChordProgression, "1m"
         );
         
-        ToneRef.Transport.loopEnd = `${internalChordProgression.length}m`;
+        const loopEnd = `${internalChordProgression.length}m`;
+        ToneRef.Transport.loopEnd = loopEnd;
         ToneRef.Transport.loop = true;
-        accompanimentPart.current.loop = false;
+        
+        accompanimentPart.current.loopEnd = loopEnd;
+        accompanimentPart.current.loop = true; // <-- FIX: Ensure the main part loops seamlessly.
+        
         highlightSequence.current.loop = true;
 
         if (isAccompanimentPlaying) {
