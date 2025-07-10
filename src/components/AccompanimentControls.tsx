@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData } from '../types';
+import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer } from '../types';
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
 import CustomRhythmEditor from './CustomRhythmEditor';
 import CustomDrumEditor from './CustomDrumEditor'; // New import
@@ -8,12 +9,12 @@ import type { ChordWithIndex } from '../App';
 interface AccompanimentControlsProps {
   bpm: number;
   onBpmChange: (bpm: number) => void;
-  volume: number; // Chord instrument volume
-  onVolumeChange: (volume: number) => void;
-  instrument: AccompanimentInstrument;
-  onInstrumentChange: (instrument: AccompanimentInstrument) => void;
-  rhythmPattern: AccompanimentRhythmPattern;
-  onRhythmPatternChange: (pattern: AccompanimentRhythmPattern) => void;
+  
+  // New props for accompaniment layers
+  accompanimentLayers: AccompanimentLayer[];
+  onAddAccompanimentLayer: () => void;
+  onRemoveAccompanimentLayer: (id: string) => void;
+  onUpdateAccompanimentLayer: <K extends keyof AccompanimentLayer>(id: string, field: K, value: AccompanimentLayer[K]) => void;
   
   isPlaying: boolean;
   onPlay: () => void;
@@ -47,8 +48,8 @@ interface AccompanimentControlsProps {
 }
 
 const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
-  bpm, onBpmChange, volume, onVolumeChange, instrument, onInstrumentChange,
-  rhythmPattern, onRhythmPatternChange,
+  bpm, onBpmChange, 
+  accompanimentLayers, onAddAccompanimentLayer, onRemoveAccompanimentLayer, onUpdateAccompanimentLayer,
   isPlaying, onPlay, onStop, isAudioReady, chordProgressionEmpty,
   chordProgressionForCustomEditor, customRhythmData, onUpdateCustomBeat,
   // Drum Props
@@ -57,6 +58,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
   bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassPattern, onBassPatternChange, bassInstrument, onBassInstrumentChange
 }) => {
   const playButtonDisabled = !isAudioReady || chordProgressionEmpty;
+  const isAnyCustomRhythm = accompanimentLayers.some(layer => layer.rhythmPattern === AccompanimentRhythmPattern.Custom);
 
   return (
     <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-6">
@@ -100,27 +102,54 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
           和弦樂器伴奏 (Chord Instrument)
           <span className="text-purple-400 group-hover:text-purple-300 text-xs transition-transform duration-200 group-open:rotate-90">&#9656;</span>
         </summary>
-        <div className="mt-3 space-y-3">
-          <div>
-            <label htmlFor="chordVolume" className="block text-sm font-medium text-gray-300 mb-1">音量 (Volume): {volume.toFixed(0)} dB</label>
-            <input type="range" id="chordVolume" min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={volume} onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              className="w-full h-2.5 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-          </div>
-          <div>
-            <label htmlFor="chordInstrument" className="block text-sm font-medium text-gray-300 mb-1">樂器 (Instrument)</label>
-            <select id="chordInstrument" value={instrument} onChange={(e) => onInstrumentChange(e.target.value as AccompanimentInstrument)}
-              className="w-full p-2 bg-gray-500 border border-gray-400 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-              {ACCOMPANIMENT_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="chordRhythmPattern" className="block text-sm font-medium text-gray-300 mb-1">節奏型態 (Rhythm Pattern)</label>
-            <select id="chordRhythmPattern" value={rhythmPattern} onChange={(e) => onRhythmPatternChange(e.target.value as AccompanimentRhythmPattern)}
-              className="w-full p-2 bg-gray-500 border border-gray-400 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-              {ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-          </div>
-          {rhythmPattern === AccompanimentRhythmPattern.Custom && (
+        <div className="mt-3 space-y-4">
+          {accompanimentLayers.map((layer, index) => (
+            <div key={layer.id} className="bg-gray-600 p-3 rounded-lg space-y-3 relative border-l-2 border-blue-500">
+              <span className="absolute -top-2 -left-2.5 w-5 h-5 bg-blue-500 text-white text-xs flex items-center justify-center rounded-full font-bold">{index + 1}</span>
+              {accompanimentLayers.length > 1 && (
+                <button
+                  onClick={() => onRemoveAccompanimentLayer(layer.id)}
+                  className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
+                  aria-label={`移除伴奏層 ${index + 1}`}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+              )}
+              <div>
+                <label htmlFor={`chordVolume-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">音量 (Volume): {layer.volume.toFixed(0)} dB</label>
+                <input type="range" id={`chordVolume-${layer.id}`} min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={layer.volume} 
+                  onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'volume', parseFloat(e.target.value))}
+                  className="w-full h-2.5 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div>
+                <label htmlFor={`chordInstrument-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">樂器 (Instrument)</label>
+                <select id={`chordInstrument-${layer.id}`} value={layer.instrument} 
+                  onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'instrument', e.target.value as AccompanimentInstrument)}
+                  className="w-full p-2 bg-gray-500 border border-gray-400 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                  {ACCOMPANIMENT_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={`chordRhythmPattern-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">節奏型態 (Rhythm Pattern)</label>
+                <select id={`chordRhythmPattern-${layer.id}`} value={layer.rhythmPattern} 
+                  onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'rhythmPattern', e.target.value as AccompanimentRhythmPattern)}
+                  className="w-full p-2 bg-gray-500 border border-gray-400 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                  {ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={onAddAccompanimentLayer}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            + 新增伴奏層 (Add Layer)
+          </button>
+          
+          {isAnyCustomRhythm && (
             <CustomRhythmEditor chordProgression={chordProgressionForCustomEditor} customRhythmData={customRhythmData} onUpdateBeat={onUpdateCustomBeat} />
           )}
         </div>
