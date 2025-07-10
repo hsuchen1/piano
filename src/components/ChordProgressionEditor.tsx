@@ -1,6 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { ChordDefinition } from '../types';
+import { CHORD_INTERVALS } from '../constants';
 
 interface ChordProgressionEditorProps {
   progression: ChordDefinition[];
@@ -8,6 +9,8 @@ interface ChordProgressionEditorProps {
   onClearProgression: () => void;
   onSaveProgression: () => void;
   onReorderProgression: (sourceIndex: number, destinationIndex: number) => void;
+  onUpdateChordInversion: (id: string, inversion: number) => void;
+  currentlyPlayingChordIndex: number | null;
 }
 
 const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
@@ -15,7 +18,9 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   onRemoveChord,
   onClearProgression,
   onSaveProgression,
-  onReorderProgression
+  onReorderProgression,
+  onUpdateChordInversion,
+  currentlyPlayingChordIndex
 }) => {
   const draggedItemIndex = useRef<number | null>(null);
   const draggedOverItemIndex = useRef<number | null>(null);
@@ -26,90 +31,47 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
     draggedItemIndex.current = index;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString()); // Required for Firefox
-    // Optional: Add a class to the dragged item for visual feedback
     e.currentTarget.classList.add('opacity-50', 'bg-blue-500'); 
   };
   
   const handleDragEnd = (e: React.DragEvent<HTMLLIElement>) => {
     e.currentTarget.classList.remove('opacity-50', 'bg-blue-500');
-    setDragIndicatorIndex(null); // Clear indicator line
+    setDragIndicatorIndex(null);
     draggedItemIndex.current = null;
     draggedOverItemIndex.current = null;
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLLIElement>, index: number) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
     if (draggedItemIndex.current === null || draggedItemIndex.current === index) {
       setDragIndicatorIndex(null);
       return;
     }
     draggedOverItemIndex.current = index;
-    
-    // Determine if indicator should be above or below the target item
     const targetRect = e.currentTarget.getBoundingClientRect();
     const isDraggingOverUpperHalf = e.clientY < targetRect.top + targetRect.height / 2;
-    
-    if (isDraggingOverUpperHalf) {
-      setDragIndicatorIndex(index); // Indicator above target
-    } else {
-      setDragIndicatorIndex(index + 1); // Indicator below target
-    }
+    setDragIndicatorIndex(isDraggingOverUpperHalf ? index : index + 1);
   };
   
-  const handleDragLeave = (e: React.DragEvent<HTMLLIElement>) => {
-    // If the mouse leaves an item but hasn't entered another valid drop target within the list,
-    // we might want to clear the indicator. This can be tricky.
-    // For simplicity, we'll let onDrop or onDragEnd handle final clearing.
-    // If we clear it here, it might flicker too much.
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLLIElement>, dropIndex: number) => {
+  const handleDrop = (e: React.DragEvent<HTMLLIElement>) => {
     e.preventDefault();
     if (draggedItemIndex.current === null) return;
 
     const sourceIndex = draggedItemIndex.current;
-    let destinationIndex = dropIndex;
-    
-    // Adjust destinationIndex based on where the drop indicator was
+    let destinationIndex = draggedOverItemIndex.current;
+
     if (dragIndicatorIndex !== null) {
-      // If indicator was at index `i`, it means drop *before* item `i`.
-      // If indicator was at `progression.length`, it means drop at the end.
-       destinationIndex = dragIndicatorIndex;
-        if (sourceIndex < destinationIndex) {
-            destinationIndex--; // Adjust if moving an item downwards past its original position
-        }
-    } else {
-      // Fallback if no indicator (e.g., dropped directly on item without precise half detection)
-      // This part might need refinement if dragIndicatorIndex isn't always set reliably
-      const targetRect = e.currentTarget.getBoundingClientRect();
-      const isDroppedOnUpperHalf = e.clientY < targetRect.top + targetRect.height / 2;
-      if (!isDroppedOnUpperHalf && sourceIndex < dropIndex) {
-        destinationIndex = dropIndex;
-      } else if (isDroppedOnUpperHalf && sourceIndex > dropIndex){
-        destinationIndex = dropIndex;
-      } else if (!isDroppedOnUpperHalf && sourceIndex > dropIndex) {
-        destinationIndex = dropIndex + 1;
-         if (sourceIndex < destinationIndex) {
-            destinationIndex--; 
-        }
-      }
+      destinationIndex = dragIndicatorIndex > sourceIndex ? dragIndicatorIndex - 1 : dragIndicatorIndex;
     }
 
-
-    if (sourceIndex !== destinationIndex && destinationIndex >= 0 && destinationIndex <= progression.length) {
-       // Correct destination index if item is dragged downwards
-        let finalDestinationIndex = destinationIndex;
-        if (sourceIndex < destinationIndex && dragIndicatorIndex !== null && dragIndicatorIndex > sourceIndex) {
-            // This adjustment logic can be tricky. Let App.tsx handle the reordering.
-            // Just pass source and the determined logical destination.
-        }
+    if (destinationIndex !== null && sourceIndex !== destinationIndex) {
       onReorderProgression(sourceIndex, destinationIndex);
     }
     
     draggedItemIndex.current = null;
     draggedOverItemIndex.current = null;
     setDragIndicatorIndex(null);
-    e.currentTarget.classList.remove('opacity-50', 'bg-blue-500'); // Clean up style from dragStart
+    e.currentTarget.classList.remove('opacity-50', 'bg-blue-500');
   };
   
   const renderDragIndicator = (index: number) => {
@@ -119,28 +81,49 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
     return null;
   };
 
+  const InversionControl = ({ chord }: { chord: ChordDefinition }) => {
+    const numNotes = CHORD_INTERVALS[chord.type]?.length || 3;
+    const maxInversions = numNotes - 1; // 3 notes -> 2 inversions, 4 notes -> 3 inversions
+
+    return (
+      <div className="flex items-center space-x-1">
+        <span className="text-xs text-gray-400 mr-1">轉位:</span>
+        {[0, 1, 2].map(invValue => {
+          const isDisabled = invValue > maxInversions;
+          return (
+            <button
+              key={invValue}
+              disabled={isDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateChordInversion(chord.id, invValue);
+              }}
+              className={`
+                w-5 h-5 text-xs font-mono rounded-sm transition-colors
+                flex items-center justify-center
+                ${chord.inversion === invValue ? 'bg-blue-500 text-white' : 'bg-gray-500 hover:bg-gray-400 text-gray-200'}
+                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+              aria-label={`設定為第 ${invValue} 轉位`}
+            >
+              {invValue}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 bg-gray-700 rounded-lg shadow-md h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-100">和弦進行</h3>
         <div className="space-x-2">
           {progression.length > 0 && (
-            <button
-              onClick={onSaveProgression}
-              className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white transition-colors"
-              title="儲存目前和弦進行"
-            >
-              儲存
-            </button>
+            <button onClick={onSaveProgression} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white transition-colors" title="儲存目前和弦進行">儲存</button>
           )}
           {progression.length > 0 && (
-            <button
-              onClick={onClearProgression}
-              className="px-3 py-1 text-xs bg-red-700 hover:bg-red-800 rounded text-white transition-colors"
-              title="清除所有和弦"
-            >
-              全部清除
-            </button>
+            <button onClick={onClearProgression} className="px-3 py-1 text-xs bg-red-700 hover:bg-red-800 rounded text-white transition-colors" title="清除所有和弦">全部清除</button>
           )}
         </div>
       </div>
@@ -151,7 +134,7 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
       ) : (
         <ul 
             className="space-y-0.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-600"
-            onDragLeave={() => setDragIndicatorIndex(null)} // Clear indicator if mouse leaves the list area
+            onDragLeave={() => setDragIndicatorIndex(null)}
         >
           {progression.map((chord, index) => (
             <React.Fragment key={chord.id}>
@@ -161,22 +144,27 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={(e) => handleDrop(e, index)}
-                onDragLeave={handleDragLeave}
-                className="flex justify-between items-center p-2.5 bg-gray-600 rounded-md shadow hover:bg-gray-500 transition-colors cursor-grab active:cursor-grabbing"
+                onDrop={(e) => handleDrop(e)}
+                className={`flex justify-between items-center p-2 rounded-md shadow transition-colors duration-300 cursor-grab active:cursor-grabbing
+                  ${index === currentlyPlayingChordIndex ? 'bg-blue-600' : 'bg-gray-600 hover:bg-gray-500'}`}
               >
-                <span className="font-mono text-sm text-gray-200">
-                  <span className="text-gray-400">{index + 1}.</span> {chord.root}{chord.type}
-                </span>
-                <button
-                  onClick={() => onRemoveChord(chord.id)}
-                  className="p-1.5 text-xs bg-red-500 hover:bg-red-600 rounded text-white transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
-                  aria-label={`移除和弦 ${chord.root}${chord.type}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex flex-col items-start">
+                    <span className="font-mono text-sm text-gray-200">
+                      <span className="text-gray-400">{index + 1}.</span> {chord.root}{chord.type}
+                    </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <InversionControl chord={chord} />
+                    <button
+                      onClick={() => onRemoveChord(chord.id)}
+                      className="p-1.5 text-xs bg-red-500 hover:bg-red-600 rounded text-white transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
+                      aria-label={`移除和弦 ${chord.root}${chord.type}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                </div>
               </li>
             </React.Fragment>
           ))}
@@ -188,4 +176,3 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
 };
 
 export default ChordProgressionEditor;
-

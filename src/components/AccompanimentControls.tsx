@@ -23,8 +23,16 @@ interface AccompanimentControlsProps {
   chordProgressionEmpty: boolean;
   
   chordProgressionForCustomEditor: ChordWithIndex[];
-  customRhythmData: BeatDuration[][];
-  onUpdateCustomBeat: (chordIndex: number, beatIndex: number, newDuration: BeatDuration) => void;
+  customRhythms: Record<string, BeatDuration[][]>;
+  onUpdateCustomBeat: (layerId: string, chordIndex: number, beatIndex: number, newDuration: BeatDuration) => void;
+
+  // Effects & Groove Props
+  reverbLevel: number;
+  onReverbLevelChange: (level: number) => void;
+  delayLevel: number;
+  onDelayLevelChange: (level: number) => void;
+  swing: number;
+  onSwingChange: (amount: number) => void;
 
   // Drum Props
   drumsEnabled: boolean;
@@ -51,14 +59,14 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
   bpm, onBpmChange, 
   accompanimentLayers, onAddAccompanimentLayer, onRemoveAccompanimentLayer, onUpdateAccompanimentLayer,
   isPlaying, onPlay, onStop, isAudioReady, chordProgressionEmpty,
-  chordProgressionForCustomEditor, customRhythmData, onUpdateCustomBeat,
+  chordProgressionForCustomEditor, customRhythms, onUpdateCustomBeat,
+  reverbLevel, onReverbLevelChange, delayLevel, onDelayLevelChange, swing, onSwingChange,
   // Drum Props
   drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange, customDrumData, onUpdateCustomDrumCell,
   // Bass Props
   bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassPattern, onBassPatternChange, bassInstrument, onBassInstrumentChange
 }) => {
   const playButtonDisabled = !isAudioReady || chordProgressionEmpty;
-  const isAnyCustomRhythm = accompanimentLayers.some(layer => layer.rhythmPattern === AccompanimentRhythmPattern.Custom);
 
   return (
     <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-6">
@@ -95,6 +103,34 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
           aria-label="調整伴奏速度"
         />
       </div>
+
+      {/* Section for Global Effects */}
+      <details className="bg-gray-650 p-3 rounded-md group">
+        <summary className="text-md font-semibold text-gray-200 cursor-pointer list-none flex justify-between items-center hover:text-purple-300 transition-colors">
+          全域效果與律動
+          <span className="text-purple-400 group-hover:text-purple-300 text-xs transition-transform duration-200 group-open:rotate-90">&#9656;</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div>
+            <label htmlFor="reverb" className="block text-sm font-medium text-gray-300 mb-1">殘響 (Reverb): {(reverbLevel * 100).toFixed(0)}%</label>
+            <input type="range" id="reverb" min="0" max="1" step="0.01" value={reverbLevel}
+              onChange={(e) => onReverbLevelChange(parseFloat(e.target.value))}
+              className="w-full h-2.5 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+          </div>
+           <div>
+            <label htmlFor="delay" className="block text-sm font-medium text-gray-300 mb-1">延遲 (Delay): {(delayLevel * 100).toFixed(0)}%</label>
+            <input type="range" id="delay" min="0" max="1" step="0.01" value={delayLevel}
+              onChange={(e) => onDelayLevelChange(parseFloat(e.target.value))}
+              className="w-full h-2.5 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+          </div>
+          <div>
+            <label htmlFor="swing" className="block text-sm font-medium text-gray-300 mb-1">搖擺律動 (Swing): {(swing * 100).toFixed(0)}%</label>
+            <input type="range" id="swing" min="0" max="1" step="0.01" value={swing}
+              onChange={(e) => onSwingChange(parseFloat(e.target.value))}
+              className="w-full h-2.5 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-400" />
+          </div>
+        </div>
+      </details>
 
       {/* Section 1: Chord Accompaniment */}
       <details className="bg-gray-650 p-3 rounded-md group" open>
@@ -139,6 +175,17 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
                   {ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
+              {layer.rhythmPattern === AccompanimentRhythmPattern.Custom && (
+                <div className="mt-3">
+                  <CustomRhythmEditor
+                    chordProgression={chordProgressionForCustomEditor}
+                    customRhythmDataForLayer={customRhythms[layer.id] || []}
+                    onUpdateBeat={(chordIndex, beatIndex, newDuration) =>
+                      onUpdateCustomBeat(layer.id, chordIndex, beatIndex, newDuration)
+                    }
+                  />
+                </div>
+              )}
             </div>
           ))}
 
@@ -148,10 +195,6 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
           >
             + 新增伴奏層 (Add Layer)
           </button>
-          
-          {isAnyCustomRhythm && (
-            <CustomRhythmEditor chordProgression={chordProgressionForCustomEditor} customRhythmData={customRhythmData} onUpdateBeat={onUpdateCustomBeat} />
-          )}
         </div>
       </details>
 
