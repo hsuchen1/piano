@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
@@ -9,16 +10,16 @@ import {
 import {
   getNoteFullName, DEFAULT_BPM, DEFAULT_ACCOMPANIMENT_VOLUME, DEFAULT_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_INSTRUMENT,
   ACCOMPANIMENT_SYNTH_PIANO_CONFIG, ACCOMPANIMENT_MELLOW_SYNTH_CONFIG,
-  ACCOMPANIMENT_GUITAR_CONFIG, USER_PIANO_SOUND_CONFIGS, DEFAULT_USER_PIANO_INSTRUMENT,
+  USER_PIANO_SOUND_CONFIGS, DEFAULT_USER_PIANO_INSTRUMENT,
   SAMPLED_GRAND_PIANO_URLS, SAMPLED_GRAND_PIANO_BASE_URL,
   DEFAULT_ACCOMPANIMENT_RHYTHM_PATTERN, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS,
   DRUM_SYNTH_CONFIGS, BASS_SYNTH_CONFIGS, PREDEFINED_DRUM_PATTERNS, BASS_DEFAULT_OCTAVE,
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
-  ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG, ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
+  ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
 } from '../constants';
-import { getChordNotes, getBassNotesForPattern } from '../utils'; // Changed to use barrel file
+import { getChordNotes, getBassNotesForPattern } from '../utils';
 import type { ChordWithIndex } from '../App';
-import type { PluckSynth, Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
+import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
 const ToneRef = Tone;
 
@@ -78,13 +79,13 @@ export const useAudio = (
   const [isAudioReady, setIsAudioReady] = useState(false);
   const pianoSynth = useRef<(Tone.PolySynth<Tone.Synth> | Tone.Sampler) | null>(null);
   const userPianoVolumeNode = useRef<Tone.Volume | null>(null); // For main piano
-  const accompanimentSynth = useRef<Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | Tone.PluckSynth | null>(null);
+  const accompanimentSynth = useRef<Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | null>(null);
   const accompanimentVolumeNode = useRef<Tone.Volume | null>(null); // For chord instrument
   const accompanimentSequence = useRef<Tone.Sequence<ChordWithIndex> | null>(null);
 
   const drumSynths = useRef<Partial<Record<DrumInstrument, Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth>>>({});
   const drumVolumeNode = useRef<Tone.Volume | null>(null);
-  const bassSynth = useRef<Tone.MonoSynth | null>(null);
+  const bassSynth = useRef<Tone.MonoSynth | Tone.Sampler | null>(null);
   const bassVolumeNode = useRef<Tone.Volume | null>(null);
 
   const activePianoNotesByKey = useRef<Map<string, string>>(new Map());
@@ -135,7 +136,7 @@ export const useAudio = (
 
 
   const createAccompanimentSynthInstance = useCallback((instrument: AccompanimentInstrument, volNode: Tone.Volume) => {
-    let newSynth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler | Tone.PluckSynth;
+    let newSynth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler;
     switch (instrument) {
       case AccompanimentInstrument.AcousticPiano:
         newSynth = new ToneRef.Sampler({
@@ -149,7 +150,24 @@ export const useAudio = (
         break;
       case AccompanimentInstrument.SynthPiano: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_SYNTH_PIANO_CONFIG }); break;
       case AccompanimentInstrument.MellowSynth: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_MELLOW_SYNTH_CONFIG }); break;
-      case AccompanimentInstrument.Guitar: newSynth = new ToneRef.PluckSynth(ACCOMPANIMENT_GUITAR_CONFIG); break;
+      case AccompanimentInstrument.SampledGuitar:
+        newSynth = new ToneRef.Sampler({
+          urls: { 'A3': 'guitar.wav' },
+          baseUrl: '/samples/',
+          release: 1,
+          onload: () => console.log('[useAudio] Accompaniment Sampler (SampledGuitar) loaded successfully.'),
+          onerror: (error) => console.error('[useAudio] CRITICAL: Failed to load samples for AccompanimentInstrument.SampledGuitar:', error),
+        });
+        break;
+      case AccompanimentInstrument.StringEnsemble:
+        newSynth = new ToneRef.Sampler({
+            urls: { 'A4': 'strings.wav' },
+            baseUrl: '/samples/',
+            release: 1.5,
+            onload: () => console.log('[useAudio] Accompaniment Sampler (StringEnsemble) loaded successfully.'),
+            onerror: (error) => console.error('[useAudio] CRITICAL: Failed to load samples for AccompanimentInstrument.StringEnsemble:', error),
+        });
+        break;
       case AccompanimentInstrument.FMSynth:
         newSynth = new ToneRef.PolySynth({
             voice: ToneRef.FMSynth,
@@ -162,7 +180,6 @@ export const useAudio = (
             options: { volume: -10, harmonicity: 2.5, oscillator: {type:"sawtooth"}, envelope: {attack:0.02, decay:0.3, sustain:0.4, release:0.7}} as Partial<AMSynthOptions>
         });
         break;
-      case AccompanimentInstrument.PluckSynth: newSynth = new ToneRef.PluckSynth(ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG); break;
       case AccompanimentInstrument.Synth: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG }); break;
       default: newSynth = new ToneRef.PolySynth({ voice: ToneRef.Synth, options: ACCOMPANIMENT_GENERAL_SYNTH_CONFIG });
     }
@@ -179,24 +196,60 @@ export const useAudio = (
     }
     activePianoNotesByKey.current.clear();
     let tempSamplerRef: Tone.Sampler | null = null;
+    const isSamplerInstrument = instrument === UserPianoInstrument.SampledGrand || instrument === UserPianoInstrument.SampledGuitar || instrument === UserPianoInstrument.StringEnsemble;
+
+    const createFallbackSynth = () => {
+        const isDefaultASampler = DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.SampledGrand || DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.SampledGuitar || DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.StringEnsemble;
+        const fallbackKey = isDefaultASampler ? UserPianoInstrument.ClassicGrand : DEFAULT_USER_PIANO_INSTRUMENT as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand | UserPianoInstrument.SampledGuitar | UserPianoInstrument.StringEnsemble>;
+        pianoSynth.current = new ToneRef.PolySynth<Tone.Synth>({ voice: ToneRef.Synth, options: USER_PIANO_SOUND_CONFIGS[fallbackKey] }).connect(volNode);
+        setCurrentUserPianoInstrument(fallbackKey);
+    }
+    
     if (instrument === UserPianoInstrument.SampledGrand) {
       setIsPianoLoading(true);
-      const sampler = new ToneRef.Sampler({ urls: SAMPLED_GRAND_PIANO_URLS, baseUrl: SAMPLED_GRAND_PIANO_BASE_URL, release: 1, volume: -6, // SampledGrand has its own internal volume adjustment
+      const sampler = new ToneRef.Sampler({ urls: SAMPLED_GRAND_PIANO_URLS, baseUrl: SAMPLED_GRAND_PIANO_BASE_URL, release: 1, volume: -6,
         onload: () => { if (pianoSynth.current === tempSamplerRef) setIsPianoLoading(false); },
         onerror: (error) => {
           console.error('Error loading sampled grand piano:', error);
           if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
             setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
-            const fallbackKey = DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.SampledGrand ? UserPianoInstrument.ClassicGrand : DEFAULT_USER_PIANO_INSTRUMENT as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>;
-            pianoSynth.current = new ToneRef.PolySynth<Tone.Synth>({ voice: ToneRef.Synth, options: USER_PIANO_SOUND_CONFIGS[fallbackKey] }).connect(volNode);
-            setCurrentUserPianoInstrument(fallbackKey);
+            createFallbackSynth();
           }
         }
       }).connect(volNode);
       tempSamplerRef = sampler; pianoSynth.current = sampler; return sampler;
+    } else if (instrument === UserPianoInstrument.SampledGuitar) {
+      setIsPianoLoading(true);
+      const sampler = new ToneRef.Sampler({ urls: { 'A3': 'guitar.wav' }, baseUrl: '/samples/', release: 1,
+        onload: () => { if (pianoSynth.current === tempSamplerRef) setIsPianoLoading(false); console.log('[useAudio] User Piano Sampler (SampledGuitar) loaded successfully.'); },
+        onerror: (error) => {
+          console.error('Error loading sampled guitar:', error);
+          if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
+            setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
+            createFallbackSynth();
+          }
+        }
+      }).connect(volNode);
+      tempSamplerRef = sampler; pianoSynth.current = sampler; return sampler;
+    } else if (instrument === UserPianoInstrument.StringEnsemble) {
+        setIsPianoLoading(true);
+        const sampler = new ToneRef.Sampler({ urls: { 'A4': 'strings.wav' }, baseUrl: '/samples/', release: 1.5,
+          onload: () => { if (pianoSynth.current === tempSamplerRef) setIsPianoLoading(false); console.log('[useAudio] User Piano Sampler (StringEnsemble) loaded successfully.'); },
+          onerror: (error) => {
+            console.error('Error loading string ensemble:', error);
+            if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
+              setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
+              createFallbackSynth();
+            }
+          }
+        }).connect(volNode);
+        tempSamplerRef = sampler; pianoSynth.current = sampler; return sampler;
     } else {
       setIsPianoLoading(false);
-      const config = USER_PIANO_SOUND_CONFIGS[instrument as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>] || USER_PIANO_SOUND_CONFIGS[DEFAULT_USER_PIANO_INSTRUMENT as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>];
+      const configKey = instrument as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand | UserPianoInstrument.SampledGuitar | UserPianoInstrument.StringEnsemble>;
+      const isDefaultASampler = DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.SampledGrand || DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.SampledGuitar || DEFAULT_USER_PIANO_INSTRUMENT === UserPianoInstrument.StringEnsemble;
+      const fallbackSynthKey = isDefaultASampler ? UserPianoInstrument.ClassicGrand : DEFAULT_USER_PIANO_INSTRUMENT as Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand | UserPianoInstrument.SampledGuitar | UserPianoInstrument.StringEnsemble>;
+      const config = USER_PIANO_SOUND_CONFIGS[configKey] || USER_PIANO_SOUND_CONFIGS[fallbackSynthKey];
       const newSynth = new ToneRef.PolySynth<Tone.Synth>({ voice: ToneRef.Synth, options: config }).connect(volNode);
       pianoSynth.current = newSynth; return newSynth;
     }
@@ -222,9 +275,22 @@ export const useAudio = (
   const createBassSynthInstance = useCallback((instrument: BassInstrument, volNode: Tone.Volume) => {
     if (bassSynth.current && !(bassSynth.current as any).disposed) {
         bassSynth.current.dispose();
+        bassSynth.current = null;
     }
-    const config = BASS_SYNTH_CONFIGS[instrument] || BASS_SYNTH_CONFIGS[BassInstrument.ElectricBass];
-    bassSynth.current = new ToneRef.MonoSynth(config).connect(volNode);
+
+    if (instrument === BassInstrument.PopPulseBass) {
+        bassSynth.current = new ToneRef.Sampler({
+            urls: { 'A4': 'pop-pulse-bass.wav' },
+            baseUrl: '/samples/',
+            release: 0.5,
+            onload: () => console.log('[useAudio] Bass Sampler (PopPulseBass) loaded successfully.'),
+            onerror: (err) => console.error('[useAudio] CRITICAL: Failed to load PopPulseBass sample:', err),
+        }).connect(volNode);
+    } else {
+        const configKey = instrument as Exclude<BassInstrument, BassInstrument.PopPulseBass>;
+        const config = BASS_SYNTH_CONFIGS[configKey] || BASS_SYNTH_CONFIGS[BassInstrument.ElectricBass];
+        bassSynth.current = new ToneRef.MonoSynth(config as any).connect(volNode);
+    }
     return bassSynth.current;
   }, []);
 
@@ -262,10 +328,13 @@ export const useAudio = (
         if (accompanimentSynth.current instanceof ToneRef.PolySynth || accompanimentSynth.current instanceof ToneRef.Sampler) {
             (accompanimentSynth.current as Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler).releaseAll(ToneRef.now());
         }
-        // For PluckSynth, notes decay naturally. Explicit releaseAll is not applicable in the same way.
     }
     if(bassSynth.current && !(bassSynth.current as any).disposed) {
-        bassSynth.current.triggerRelease(ToneRef.now());
+        if (bassSynth.current instanceof ToneRef.Sampler) {
+            bassSynth.current.releaseAll(ToneRef.now());
+        } else { // It's a MonoSynth
+            (bassSynth.current as Tone.MonoSynth).triggerRelease(ToneRef.now());
+        }
     }
   }, []);
 
@@ -410,7 +479,7 @@ export const useAudio = (
     if (currentUserPianoInstrumentRef.current === instrument && !isPianoLoading) return; setCurrentUserPianoInstrument(instrument);
     if (isAudioReady && ToneRef && userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) {
          createUserPianoSynthInstance(instrument, userPianoVolumeNode.current);
-    } else if (!isAudioReady && instrument === UserPianoInstrument.SampledGrand) {
+    } else if (!isAudioReady && (instrument === UserPianoInstrument.SampledGrand || instrument === UserPianoInstrument.SampledGuitar || instrument === UserPianoInstrument.StringEnsemble)) {
         setIsPianoLoading(true); // Will be handled by initializeAudio
     }
   }, [isAudioReady, createUserPianoSynthInstance, isPianoLoading]);
@@ -451,7 +520,6 @@ export const useAudio = (
         if (accompanimentSynth.current instanceof ToneRef.PolySynth || accompanimentSynth.current instanceof ToneRef.Sampler ) {
            (accompanimentSynth.current as Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler).releaseAll?.(ToneRef.now());
         }
-        // PluckSynth does not have releaseAll.
         accompanimentSynth.current.dispose();
       }
       if (accompanimentVolumeNode.current && !accompanimentVolumeNode.current.disposed) accompanimentVolumeNode.current.dispose();

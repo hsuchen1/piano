@@ -32,8 +32,8 @@ export enum AccompanimentInstrument {
   Synth = "Synth",
   FMSynth = "FM Synth",
   AMSynth = "AM Synth",
-  PluckSynth = "Pluck Synth",
-  Guitar = "Guitar",
+  SampledGuitar = "SampledGuitar",
+  StringEnsemble = "StringEnsemble",
 }
 
 export enum UserPianoInstrument {
@@ -42,6 +42,8 @@ export enum UserPianoInstrument {
   ElectricPiano = "ElectricPiano",
   SimpleSynth = "SimpleSynth",
   SampledGrand = "SampledGrand",
+  SampledGuitar = "SampledGuitar",
+  StringEnsemble = "StringEnsemble",
 }
 
 export enum AccompanimentRhythmPattern {
@@ -92,6 +94,7 @@ export enum BassInstrument {
   ElectricBass = "ElectricBass",
   SynthBass = "SynthBass",
   AcousticBass = "AcousticBass", // e.g. upright bass sound
+  PopPulseBass = "PopPulseBass",
 }
 
 export enum BassPattern {
