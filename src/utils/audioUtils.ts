@@ -13,6 +13,10 @@ export const getChordNotes = (chord: ChordDefinition, octaveForRoot: number, tra
   }
   const { root, type, inversion } = chord;
   const intervals = CHORD_INTERVALS[type];
+  if (!intervals) {
+      console.error(`No intervals found for chord type: ${type}`);
+      return [];
+  }
   const rootFullName = getNoteFullName(root, octaveForRoot, transpose);
 
   try {
