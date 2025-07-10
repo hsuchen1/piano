@@ -1,7 +1,7 @@
 
 import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern } from './types';
 import * as Tone from 'tone';
-import type { PluckSynthOptions, MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions, BiquadFilterType as ToneFilterType } from 'tone';
+import type { MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions } from 'tone';
 
 
 const ToneRef = Tone;
@@ -109,16 +109,18 @@ export const ACCOMPANIMENT_INSTRUMENT_OPTIONS: { value: AccompanimentInstrument;
   { value: AccompanimentInstrument.AcousticPiano, label: "鋼琴 (Piano)" },
   { value: AccompanimentInstrument.SynthPiano, label: "合成鋼琴 (Synth Piano)" },
   { value: AccompanimentInstrument.MellowSynth, label: "圓潤合成音 (Mellow Synth)" },
-  { value: AccompanimentInstrument.Guitar, label: "吉他 (Guitar)" },
+  { value: AccompanimentInstrument.SampledGuitar, label: "吉他 (Guitar)" },
+  { value: AccompanimentInstrument.StringEnsemble, label: "弦樂合奏 (String Ensemble)" },
   { value: AccompanimentInstrument.Synth, label: "合成器 (Synth)" },
   { value: AccompanimentInstrument.FMSynth, label: "FM 合成器 (FM Synth)" },
   { value: AccompanimentInstrument.AMSynth, label: "AM 合成器 (AM Synth)" },
-  { value: AccompanimentInstrument.PluckSynth, label: "撥弦合成器 (Pluck Synth)" },
 ];
 
 export const USER_PIANO_INSTRUMENT_OPTIONS: { value: UserPianoInstrument; label: string }[] = [
   { value: UserPianoInstrument.ClassicGrand, label: "古典平台鋼琴 (Classic Grand)" },
   { value: UserPianoInstrument.SampledGrand, label: "真實平台鋼琴 (Sampled Grand)"},
+  { value: UserPianoInstrument.SampledGuitar, label: "吉他 (Guitar)" },
+  { value: UserPianoInstrument.StringEnsemble, label: "弦樂合奏 (String Ensemble)" },
   { value: UserPianoInstrument.BrightUpright, label: "明亮直立鋼琴 (Bright Upright)" },
   { value: UserPianoInstrument.ElectricPiano, label: "電鋼琴 (Electric Piano)" },
   { value: UserPianoInstrument.SimpleSynth, label: "基本合成器 (Simple Synth)" },
@@ -152,23 +154,23 @@ export const DRUM_SYNTH_CONFIGS: {
 } = {
   [DrumInstrument.Kick]: {
     pitchDecay: 0.05, octaves: 10,
-    oscillator: { type: "sine", phase: 0 },
+    oscillator: { type: "sine", phase: 0 } as any,
     envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: "exponential", releaseCurve: "exponential", decayCurve: "exponential" },
     volume: 0
   },
   [DrumInstrument.Snare]: {
-    noise: { type: "white", playbackRate: 3, fadeIn: 0, fadeOut: 0 },
+    noise: { type: "white", playbackRate: 3, fadeIn: 0, fadeOut: 0 } as any,
     envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "linear" },
     volume: -5
   },
   [DrumInstrument.HiHatClosed]: {
-    noise: { type: "pink", playbackRate: 5, fadeIn: 0, fadeOut: 0 },
+    noise: { type: "pink", playbackRate: 5, fadeIn: 0, fadeOut: 0 } as any,
     envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.08, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "linear" },
     volume: -15
   },
   [DrumInstrument.Tom1]: {
     pitchDecay: 0.08, octaves: 4,
-    oscillator: { type: "sine", phase: 0 },
+    oscillator: { type: "sine", phase: 0 } as any,
     envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1, attackCurve: "linear", releaseCurve: "exponential", decayCurve: "exponential" },
     volume: -3
   },
@@ -185,6 +187,7 @@ export const BASS_INSTRUMENT_OPTIONS: { value: BassInstrument; label: string }[]
     { value: BassInstrument.ElectricBass, label: "電貝斯 (Electric Bass)" },
     { value: BassInstrument.SynthBass, label: "合成貝斯 (Synth Bass)" },
     { value: BassInstrument.AcousticBass, label: "木貝斯 (Acoustic Bass)" },
+    { value: BassInstrument.PopPulseBass, label: "流行脈動貝斯 (Pop Pulse Bass)" },
 ];
 
 export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
@@ -195,7 +198,7 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
     { value: BassPattern.WalkingBassSimple, label: "簡易行走貝斯 (Simple Walking Bass)" },
 ];
 
-export const BASS_SYNTH_CONFIGS: Record<BassInstrument, Partial<MonoSynthOptions>> = {
+export const BASS_SYNTH_CONFIGS: Record<Exclude<BassInstrument, BassInstrument.PopPulseBass>, any> = {
   [BassInstrument.ElectricBass]: {
     oscillator: { type: 'fatsawtooth', count: 2, spread: 10, phase: 0 },
     envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5, attackCurve: 'linear', releaseCurve: 'exponential', decayCurve: 'exponential' },
@@ -256,24 +259,24 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
 };
 
 
-export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand>, Partial<ToneSynthOptions>> = {
+export const USER_PIANO_SOUND_CONFIGS: Record<Exclude<UserPianoInstrument, UserPianoInstrument.SampledGrand | UserPianoInstrument.SampledGuitar | UserPianoInstrument.StringEnsemble>, Partial<ToneSynthOptions>> = {
   [UserPianoInstrument.ClassicGrand]: {
-    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3 },
+    oscillator: { type: 'fatsine', phase: 0, spread: 30, count: 3 } as any,
     envelope: { attack: 0.005, decay: 0.7, sustain: 0.1, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -6
   },
   [UserPianoInstrument.BrightUpright]: {
-    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0 },
+    oscillator: { type: 'fatsquare', spread:15, count: 2, phase: 0 } as any,
     envelope: { attack: 0.008, decay: 0.5, sustain: 0.05, release: 0.6, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -7
   },
   [UserPianoInstrument.ElectricPiano]: {
-    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square' },
+    oscillator: { type: 'fmsine', harmonicity: 2, modulationIndex:1.5, phase: 0, modulationType: 'square' } as any,
     envelope: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.2, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -5
   },
   [UserPianoInstrument.SimpleSynth]: {
-    oscillator: { type: 'triangle', phase: 0 }, 
+    oscillator: { type: 'triangle', phase: 0 } as any, 
     envelope: { attack: 0.01, decay: 0.15, sustain: 0.25, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
     volume: -8
   },
@@ -284,25 +287,23 @@ export const SAMPLED_GRAND_PIANO_BASE_URL = 'https://tonejs.github.io/audio/sala
 
 // Accompaniment Synth Configs
 export const ACCOMPANIMENT_SYNTH_PIANO_CONFIG: Partial<ToneSynthOptions> = {
-  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0 },
+  oscillator: { type: 'fatsawtooth', count: 3, spread: 20, phase: 0 } as any,
   envelope: { attack: 0.01, decay: 1.2, sustain: 0.3, release: 0.8, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
 export const ACCOMPANIMENT_MELLOW_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
-  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3 },
+  oscillator: { type: 'fatsine', phase: 0, spread: 20, count: 3 } as any,
   envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1.0, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -7
 };
-export const ACCOMPANIMENT_GUITAR_CONFIG: Partial<PluckSynthOptions> = { attackNoise: 1, dampening: 4000, resonance: 0.7, release: 0.8, volume: -6 };
-export const ACCOMPANIMENT_PLUCK_SYNTH_VOICE_CONFIG: Partial<PluckSynthOptions> = { attackNoise: 0.8, dampening: 3000, resonance: 0.75, release: 0.7, volume: -7 };
 
 export const ACCOMPANIMENT_GENERAL_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
-  oscillator: { type: "sawtooth", phase: 0 },
+  oscillator: { type: "sawtooth", phase: 0 } as any,
   envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.5, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -9
 };
 export const ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG: Partial<ToneSynthOptions> = {
-  oscillator: { type: 'triangle', phase: 0 },
+  oscillator: { type: 'triangle', phase: 0 } as any,
   envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: 'linear', decayCurve: 'exponential', releaseCurve: 'exponential' },
   volume: -8
 };
