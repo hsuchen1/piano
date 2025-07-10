@@ -22,6 +22,7 @@ import type { ChordWithIndex } from '../App';
 import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
 const ToneRef = Tone;
+const SAMPLES_BASE_URL = `${(import.meta as any).env.BASE_URL}samples/`;
 
 export interface UseAudioReturn {
   attackPianoNote: (noteName: NoteName, octave: number, isComputerKey?: boolean) => void;
@@ -153,7 +154,7 @@ export const useAudio = (
       case AccompanimentInstrument.SampledGuitar:
         newSynth = new ToneRef.Sampler({
           urls: { 'A3': 'guitar.wav' },
-          baseUrl: '/samples/',
+          baseUrl: SAMPLES_BASE_URL,
           release: 1,
           onload: () => console.log('[useAudio] Accompaniment Sampler (SampledGuitar) loaded successfully.'),
           onerror: (error) => console.error('[useAudio] CRITICAL: Failed to load samples for AccompanimentInstrument.SampledGuitar:', error),
@@ -162,7 +163,7 @@ export const useAudio = (
       case AccompanimentInstrument.StringEnsemble:
         newSynth = new ToneRef.Sampler({
             urls: { 'A4': 'strings.wav' },
-            baseUrl: '/samples/',
+            baseUrl: SAMPLES_BASE_URL,
             release: 1.5,
             onload: () => console.log('[useAudio] Accompaniment Sampler (StringEnsemble) loaded successfully.'),
             onerror: (error) => console.error('[useAudio] CRITICAL: Failed to load samples for AccompanimentInstrument.StringEnsemble:', error),
@@ -220,7 +221,7 @@ export const useAudio = (
       tempSamplerRef = sampler; pianoSynth.current = sampler; return sampler;
     } else if (instrument === UserPianoInstrument.SampledGuitar) {
       setIsPianoLoading(true);
-      const sampler = new ToneRef.Sampler({ urls: { 'A3': 'guitar.wav' }, baseUrl: '/samples/', release: 1,
+      const sampler = new ToneRef.Sampler({ urls: { 'A3': 'guitar.wav' }, baseUrl: SAMPLES_BASE_URL, release: 1,
         onload: () => { if (pianoSynth.current === tempSamplerRef) setIsPianoLoading(false); console.log('[useAudio] User Piano Sampler (SampledGuitar) loaded successfully.'); },
         onerror: (error) => {
           console.error('Error loading sampled guitar:', error);
@@ -233,7 +234,7 @@ export const useAudio = (
       tempSamplerRef = sampler; pianoSynth.current = sampler; return sampler;
     } else if (instrument === UserPianoInstrument.StringEnsemble) {
         setIsPianoLoading(true);
-        const sampler = new ToneRef.Sampler({ urls: { 'A4': 'strings.wav' }, baseUrl: '/samples/', release: 1.5,
+        const sampler = new ToneRef.Sampler({ urls: { 'A4': 'strings.wav' }, baseUrl: SAMPLES_BASE_URL, release: 1.5,
           onload: () => { if (pianoSynth.current === tempSamplerRef) setIsPianoLoading(false); console.log('[useAudio] User Piano Sampler (StringEnsemble) loaded successfully.'); },
           onerror: (error) => {
             console.error('Error loading string ensemble:', error);
@@ -281,7 +282,7 @@ export const useAudio = (
     if (instrument === BassInstrument.PopPulseBass) {
         bassSynth.current = new ToneRef.Sampler({
             urls: { 'A4': 'pop-pulse-bass.wav' },
-            baseUrl: '/samples/',
+            baseUrl: SAMPLES_BASE_URL,
             release: 0.5,
             onload: () => console.log('[useAudio] Bass Sampler (PopPulseBass) loaded successfully.'),
             onerror: (err) => console.error('[useAudio] CRITICAL: Failed to load PopPulseBass sample:', err),
