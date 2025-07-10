@@ -1,5 +1,5 @@
 
-import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern } from './types';
+import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern, AccompanimentLayer } from './types';
 import * as Tone from 'tone';
 import type { MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions } from 'tone';
 
@@ -58,10 +58,15 @@ export const MAX_BASS_VOLUME = 25; // Specific maximum for bass
 export const MIN_USER_PIANO_VOLUME = -20; // -40 + 20
 export const MAX_USER_PIANO_VOLUME = 30;  // 10 + 20
 
+// New Default for a single Accompaniment Layer
+export const DEFAULT_ACCOMPANIMENT_LAYER: Omit<AccompanimentLayer, 'id'> = {
+  instrument: AccompanimentInstrument.SynthPiano,
+  volume: DEFAULT_ACCOMPANIMENT_VOLUME,
+  rhythmPattern: AccompanimentRhythmPattern.PerMeasure,
+};
 
-export const DEFAULT_ACCOMPANIMENT_INSTRUMENT = AccompanimentInstrument.SynthPiano;
+
 export const DEFAULT_USER_PIANO_INSTRUMENT: UserPianoInstrument = UserPianoInstrument.ClassicGrand;
-export const DEFAULT_ACCOMPANIMENT_RHYTHM_PATTERN = AccompanimentRhythmPattern.PerMeasure;
 
 // --- Drum Defaults ---
 export const DEFAULT_DRUMS_ENABLED = false;
@@ -334,4 +339,4 @@ export const BEAT_DURATION_OPTIONS: { value: BeatDuration; label: string }[] = [
   { value: "off", label: "關閉 (Off)" }, { value: "1n", label: "全音符 (Whole)" }, { value: "2n", label: "二分音符 (Half)" }, { value: "4n", label: "四分音符 (Quarter)" }, { value: "8n", label: "八分音符 (Eighth)" }, { value: "16n", label: "十六分音符 (Sixteenth)" },
 ];
 
-export const SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY = 'interactivePianoStudio_savedProgressions_v3';
+export const SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY = 'interactivePianoStudio_savedProgressions_v4';

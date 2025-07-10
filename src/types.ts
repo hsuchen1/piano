@@ -36,6 +36,13 @@ export enum AccompanimentInstrument {
   StringEnsemble = "StringEnsemble",
 }
 
+export interface AccompanimentLayer {
+  id: string;
+  instrument: AccompanimentInstrument;
+  volume: number;
+  rhythmPattern: AccompanimentRhythmPattern;
+}
+
 export enum UserPianoInstrument {
   ClassicGrand = "ClassicGrand",
   BrightUpright = "BrightUpright",
@@ -108,6 +115,8 @@ export enum BassPattern {
 export interface SavedProgressionEntry {
   progression: ChordDefinition[];
   customRhythm: BeatDuration[][];
+  // Accompaniment Layers
+  accompanimentLayers: AccompanimentLayer[];
   // Drum settings
   drumsEnabled?: boolean;
   drumVolume?: number;
@@ -118,4 +127,9 @@ export interface SavedProgressionEntry {
   bassVolume?: number;
   bassPattern?: BassPattern;
   bassInstrument?: BassInstrument;
+
+  // --- Legacy properties for migration ---
+  instrument?: AccompanimentInstrument;
+  volume?: number;
+  rhythmPattern?: AccompanimentRhythmPattern;
 }
