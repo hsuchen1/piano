@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
@@ -19,12 +17,12 @@ import {
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
   ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
 } from '../constants';
-import { getChordNotes, getBassNotesForPattern } from '../utils';
+import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils';
 import type { ChordWithIndex } from '../App';
 import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
 const ToneRef = Tone;
-const SAMPLES_BASE_URL = `${(import.meta as any).env.BASE_URL}samples/`;
+const SAMPLES_BASE_URL = `/samples/`;
 
 type AccompanimentSynthMapEntry = {
   synth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler;
@@ -49,6 +47,11 @@ export interface UseAudioReturn {
   isAudioReady: boolean;
   isPianoLoading: boolean;
 
+  // Effects & Groove Setters
+  setReverbLevel: (level: number) => void;
+  setDelayLevel: (level: number) => void;
+  setSwing: (amount: number) => void;
+
   // Drum properties and setters
   setDrumsEnabled: (enabled: boolean) => void;
   setDrumVolume: (volume: number) => void;
@@ -66,7 +69,7 @@ const DRUM_NOTE_DURATION = "16n"; // Short duration for drum hits
 
 export const useAudio = (
     progressionWithIndicesFromProps: ChordWithIndex[],
-    customRhythmDataFromProps: BeatDuration[][],
+    customRhythmsFromProps: Record<string, BeatDuration[][]>,
     accompanimentLayersProp: AccompanimentLayer[],
     // Drum props
     drumsEnabledProp: boolean,
@@ -78,7 +81,9 @@ export const useAudio = (
     bassVolumeProp: number,
     bassPatternProp: BassPattern,
     bassInstrumentProp: BassInstrument,
-    initialUserPianoVolume: number
+    initialUserPianoVolume: number,
+    // New callback for highlighting
+    setCurrentlyPlayingChordIndex: (index: number | null) => void
 ): UseAudioReturn => {
   const [isAudioReady, setIsAudioReady] = useState(false);
   const pianoSynth = useRef<(Tone.PolySynth<Tone.Synth> | Tone.Sampler) | null>(null);
@@ -92,13 +97,17 @@ export const useAudio = (
   const bassSynth = useRef<Tone.MonoSynth | Tone.Sampler | null>(null);
   const bassVolumeNode = useRef<Tone.Volume | null>(null);
 
+  // Global Effects
+  const globalReverb = useRef<Tone.Reverb | null>(null);
+  const globalDelay = useRef<Tone.FeedbackDelay | null>(null);
+
   const activePianoNotesByKey = useRef<Map<string, string>>(new Map());
 
   const [currentTransposition, setCurrentTransposition] = useState(0);
   const [isAccompanimentPlaying, setIsAccompanimentPlaying] = useState(false);
 
   const [internalChordProgression, setInternalChordProgression] = useState<ChordWithIndex[]>(progressionWithIndicesFromProps);
-  const customRhythmDataRef = useRef<BeatDuration[][]>(customRhythmDataFromProps);
+  const customRhythmsRef = useRef<Record<string, BeatDuration[][]>>(customRhythmsFromProps);
   const customDrumDataRef = useRef<CustomDrumProgressionData>(customDrumDataProp);
 
 
@@ -130,7 +139,7 @@ export const useAudio = (
   useEffect(() => { bassInstrumentRef.current = bassInstrumentProp; }, [bassInstrumentProp]);
 
   useEffect(() => { setInternalChordProgression(progressionWithIndicesFromProps); }, [progressionWithIndicesFromProps]);
-  useEffect(() => { customRhythmDataRef.current = customRhythmDataFromProps; }, [customRhythmDataFromProps]);
+  useEffect(() => { customRhythmsRef.current = customRhythmsFromProps; }, [customRhythmsFromProps]);
   useEffect(() => { customDrumDataRef.current = customDrumDataProp; }, [customDrumDataProp]);
 
 
@@ -169,6 +178,11 @@ export const useAudio = (
     return newSynth;
   }, []);
 
+  const connectToEffects = useCallback((node: Tone.Volume) => {
+    if (globalReverb.current) node.connect(globalReverb.current);
+    if (globalDelay.current) node.connect(globalDelay.current);
+  }, []);
+  
   useEffect(() => {
     if (!isAudioReady) return;
 
@@ -202,12 +216,13 @@ export const useAudio = (
         } else {
             // Add new synth
             const volumeNode = new ToneRef.Volume(layer.volume).toDestination();
+            connectToEffects(volumeNode);
             const synth = createAccompanimentSynthInstance(layer.instrument).connect(volumeNode);
             synthMap.set(layer.id, { synth, volumeNode, instrument: layer.instrument });
         }
     });
 
-  }, [accompanimentLayersProp, isAudioReady, createAccompanimentSynthInstance]);
+  }, [accompanimentLayersProp, isAudioReady, createAccompanimentSynthInstance, connectToEffects]);
 
   const createUserPianoSynthInstance = useCallback((instrument: UserPianoInstrument, volNode: Tone.Volume) => {
     if (pianoSynth.current && !(pianoSynth.current as any).disposed) {
@@ -327,34 +342,55 @@ export const useAudio = (
     if (!ToneRef) return false; if (isAudioReady) return true;
     try {
       await ToneRef.start();
+      
+      // Global Effects
+      if (!globalReverb.current || globalReverb.current.disposed) {
+        globalReverb.current = new ToneRef.Reverb({ decay: 4.5, wet: 0 }).toDestination();
+      }
+      if (!globalDelay.current || globalDelay.current.disposed) {
+        globalDelay.current = new ToneRef.FeedbackDelay("8n.", 0.5).toDestination();
+        globalDelay.current.wet.value = 0;
+      }
+      
       // Main Piano Volume and Synth
-      if (!userPianoVolumeNode.current || userPianoVolumeNode.current.disposed) userPianoVolumeNode.current = new ToneRef.Volume(currentUserPianoVolume).toDestination();
+      if (!userPianoVolumeNode.current || userPianoVolumeNode.current.disposed) {
+        userPianoVolumeNode.current = new ToneRef.Volume(currentUserPianoVolume).toDestination();
+        connectToEffects(userPianoVolumeNode.current);
+      }
       if (!pianoSynth.current || (pianoSynth.current as any).disposed) createUserPianoSynthInstance(currentUserPianoInstrumentRef.current, userPianoVolumeNode.current);
 
       // Accompaniment Layers (initial setup)
       accompanimentLayersRef.current.forEach(layer => {
         if (!accompanimentSynths.current.has(layer.id)) {
             const volumeNode = new ToneRef.Volume(layer.volume).toDestination();
+            connectToEffects(volumeNode);
             const synth = createAccompanimentSynthInstance(layer.instrument).connect(volumeNode);
             accompanimentSynths.current.set(layer.id, { synth, volumeNode, instrument: layer.instrument });
         }
       });
 
       // Drums Volume and Synths
-      if (!drumVolumeNode.current || drumVolumeNode.current.disposed) drumVolumeNode.current = new ToneRef.Volume(drumVolumeProp).toDestination();
+      if (!drumVolumeNode.current || drumVolumeNode.current.disposed) {
+        drumVolumeNode.current = new ToneRef.Volume(drumVolumeProp).toDestination();
+        connectToEffects(drumVolumeNode.current);
+      }
       createDrumSynths(drumVolumeNode.current);
 
       // Bass Volume and Synth
-      if (!bassVolumeNode.current || bassVolumeNode.current.disposed) bassVolumeNode.current = new ToneRef.Volume(bassVolumeProp).toDestination();
+      if (!bassVolumeNode.current || bassVolumeNode.current.disposed) {
+        bassVolumeNode.current = new ToneRef.Volume(bassVolumeProp).toDestination();
+        connectToEffects(bassVolumeNode.current);
+      }
       if (!bassSynth.current || (bassSynth.current as any).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
 
       ToneRef.Transport.bpm.value = currentBPM; ToneRef.Transport.timeSignature = 4; setIsAudioReady(true); return true;
     } catch (e) { console.error("Error starting Tone.js or initializing synths:", e); setIsAudioReady(false); return false; }
-  }, [isAudioReady, currentBPM, currentUserPianoVolume, createAccompanimentSynthInstance, createUserPianoSynthInstance, createDrumSynths, drumVolumeProp, createBassSynthInstance, bassVolumeProp]);
+  }, [isAudioReady, currentBPM, currentUserPianoVolume, createAccompanimentSynthInstance, createUserPianoSynthInstance, createDrumSynths, drumVolumeProp, createBassSynthInstance, bassVolumeProp, connectToEffects]);
 
   const stopAccompaniment = useCallback(() => {
     if (!ToneRef) return;
     setIsAccompanimentPlaying(false);
+    setCurrentlyPlayingChordIndex(null);
     if (ToneRef.Transport.state === 'started') ToneRef.Transport.stop(ToneRef.now());
 
     accompanimentSynths.current.forEach(entry => {
@@ -368,7 +404,7 @@ export const useAudio = (
             (bassSynth.current as Tone.MonoSynth).triggerRelease(ToneRef.now());
         }
     }
-  }, []);
+  }, [setCurrentlyPlayingChordIndex]);
 
 
   useEffect(() => { // Main Accompaniment Sequence Logic
@@ -381,17 +417,20 @@ export const useAudio = (
     if (internalChordProgression.length > 0) {
       const newSequence = new ToneRef.Sequence<ChordWithIndex>(
         (scheduledTimeInSeconds, chordDef) => {
+          ToneRef.Draw.schedule(() => {
+              setCurrentlyPlayingChordIndex(chordDef.originalIndex);
+          }, scheduledTimeInSeconds);
           
           // --- Multi-layer Chord Accompaniment ---
           accompanimentLayersRef.current.forEach(layer => {
             const synthEntry = accompanimentSynths.current.get(layer.id);
             if (!synthEntry || (synthEntry.synth as any).disposed) return;
             
-            const { synth, instrument } = synthEntry;
+            const { synth } = synthEntry;
             const rhythmPattern = layer.rhythmPattern;
             
             if (rhythmPattern !== AccompanimentRhythmPattern.Custom) {
-              const notes = getChordNotes(chordDef.root, chordDef.type, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
+              const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
               const patternConfig = ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.find(p => p.value === rhythmPattern);
               if (notes.length > 0 && patternConfig && patternConfig.hits) {
                 patternConfig.hits.forEach(hit => {
@@ -400,8 +439,10 @@ export const useAudio = (
                 });
               }
             } else { // Custom Rhythm
-               const notes = getChordNotes(chordDef.root, chordDef.type, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
-               const customChordBeatsConfig = customRhythmDataRef.current[chordDef.originalIndex];
+               const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
+               const customRhythmForLayer = customRhythmsRef.current[layer.id];
+               const customChordBeatsConfig = customRhythmForLayer ? customRhythmForLayer[chordDef.originalIndex] : null;
+
                if (notes.length > 0 && customChordBeatsConfig) {
                   for (let mainBeatIdx = 0; mainBeatIdx < 4; mainBeatIdx++) {
                       const fillType = customChordBeatsConfig[mainBeatIdx];
@@ -473,7 +514,7 @@ export const useAudio = (
     } else if (isAccompanimentPlaying) { stopAccompaniment(); }
   }, [
     internalChordProgression, isAudioReady, isAccompanimentPlaying,
-    stopAccompaniment
+    stopAccompaniment, setCurrentlyPlayingChordIndex
   ]);
 
   const attackPianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
@@ -515,21 +556,17 @@ export const useAudio = (
     setCurrentTransposition(semitones);
   }, [isPianoLoading]);
 
+  const setReverbLevel = useCallback((level: number) => { if (isAudioReady && globalReverb.current) { globalReverb.current.wet.linearRampTo(level, 0.1); } }, [isAudioReady]);
+  const setDelayLevel = useCallback((level: number) => { if (isAudioReady && globalDelay.current) { globalDelay.current.wet.linearRampTo(level, 0.1); } }, [isAudioReady]);
+  const setSwing = useCallback((amount: number) => { if (isAudioReady && ToneRef) { ToneRef.Transport.swing = Math.pow(amount, 0.65); } }, [isAudioReady]);
+
   // New setters for drums and bass
   const setDrumsEnabled = useCallback((enabled: boolean) => { drumsEnabledRef.current = enabled; }, []);
-  const setDrumVolume = useCallback((volume: number) => {
-    if (isAudioReady && drumVolumeNode.current && !drumVolumeNode.current.disposed) {
-      drumVolumeNode.current.volume.linearRampTo(volume, 0.1);
-    }
-  }, [isAudioReady]);
+  const setDrumVolume = useCallback((volume: number) => { if (isAudioReady && drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.volume.value = volume; }, [isAudioReady]);
   const setDrumPattern = useCallback((pattern: DrumPattern) => { drumPatternRef.current = pattern; }, []);
 
   const setBassEnabled = useCallback((enabled: boolean) => { bassEnabledRef.current = enabled; }, []);
-  const setBassVolume = useCallback((volume: number) => {
-    if (isAudioReady && bassVolumeNode.current && !bassVolumeNode.current.disposed) {
-      bassVolumeNode.current.volume.linearRampTo(volume, 0.1);
-    }
-  }, [isAudioReady]);
+  const setBassVolume = useCallback((volume: number) => { if (isAudioReady && bassVolumeNode.current && !bassVolumeNode.current.disposed) bassVolumeNode.current.volume.value = volume; }, [isAudioReady]);
   const setBassPattern = useCallback((pattern: BassPattern) => { bassPatternRef.current = pattern; }, []);
   const setBassInstrument = useCallback((instrument: BassInstrument) => {
     bassInstrumentRef.current = instrument;
@@ -554,6 +591,9 @@ export const useAudio = (
       });
       accompanimentSynths.current.clear();
 
+      if(globalReverb.current && !globalReverb.current.disposed) globalReverb.current.dispose();
+      if(globalDelay.current && !globalDelay.current.disposed) globalDelay.current.dispose();
+
       if (drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.dispose();
       (Object.values(drumSynths.current) as (Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth)[])
         .filter(synth => synth && !(synth as any).disposed)
@@ -572,6 +612,7 @@ export const useAudio = (
     currentTransposition, isAccompanimentPlaying, currentBPM, currentUserPianoVolume,
     currentUserPianoInstrument,
     isAudioReady, isPianoLoading,
+    setReverbLevel, setDelayLevel, setSwing,
     // Drum setters
     setDrumsEnabled, setDrumVolume, setDrumPattern,
     // Bass setters

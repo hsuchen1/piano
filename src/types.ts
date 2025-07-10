@@ -23,6 +23,7 @@ export interface ChordDefinition {
   id: string; // Unique ID for list rendering
   root: NoteName;
   type: ChordType;
+  inversion: number; // 0: root, 1: 1st, 2: 2nd
 }
 
 export enum AccompanimentInstrument {
@@ -114,7 +115,6 @@ export enum BassPattern {
 
 export interface SavedProgressionEntry {
   progression: ChordDefinition[];
-  customRhythm: BeatDuration[][];
   // Accompaniment Layers
   accompanimentLayers: AccompanimentLayer[];
   // Drum settings
@@ -127,9 +127,13 @@ export interface SavedProgressionEntry {
   bassVolume?: number;
   bassPattern?: BassPattern;
   bassInstrument?: BassInstrument;
+  
+  // New custom rhythms structure
+  customRhythms?: Record<string, BeatDuration[][]>;
 
   // --- Legacy properties for migration ---
   instrument?: AccompanimentInstrument;
   volume?: number;
   rhythmPattern?: AccompanimentRhythmPattern;
+  customRhythm?: BeatDuration[][];
 }

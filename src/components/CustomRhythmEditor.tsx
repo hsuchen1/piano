@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { ChordWithIndex } from '../App'; // Using ChordWithIndex for consistent typing
 import { BeatDuration } from '../types';
@@ -5,13 +6,13 @@ import { BEAT_DURATION_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION } from '../constant
 
 interface CustomRhythmEditorProps {
   chordProgression: ChordWithIndex[]; // Use ChordWithIndex for consistency
-  customRhythmData: BeatDuration[][];
+  customRhythmDataForLayer: BeatDuration[][];
   onUpdateBeat: (chordIndex: number, beatIndex: number, newDuration: BeatDuration) => void;
 }
 
 const CustomRhythmEditor: React.FC<CustomRhythmEditorProps> = ({
   chordProgression,
-  customRhythmData,
+  customRhythmDataForLayer,
   onUpdateBeat,
 }) => {
   if (!chordProgression || chordProgression.length === 0) {
@@ -27,7 +28,7 @@ const CustomRhythmEditor: React.FC<CustomRhythmEditorProps> = ({
       <h4 className="text-sm font-semibold text-gray-200 mb-2">自訂節奏編輯器 (每拍音符時值)</h4>
       {chordProgression.map((chordItem, chordIdx) => {
         // Ensure chordBeats is an array of 4 BeatDuration values
-        const chordBeats = customRhythmData[chordItem.originalIndex] || 
+        const chordBeats = customRhythmDataForLayer[chordItem.originalIndex] || 
                            Array(4).fill(DEFAULT_CUSTOM_BEAT_DURATION);
         
         return (

@@ -17,6 +17,7 @@ const ChordSelector: React.FC<ChordSelectorProps> = ({ onAddChord }) => {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       root: rootNote,
       type: chordType,
+      inversion: 0, // Default to root position
     });
   };
 
