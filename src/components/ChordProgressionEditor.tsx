@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { ChordDefinition } from '../types';
 import { CHORD_INTERVALS } from '../constants';
@@ -12,6 +11,48 @@ interface ChordProgressionEditorProps {
   onUpdateChordInversion: (id: string, inversion: number) => void;
   currentlyPlayingChordIndex: number | null;
 }
+
+// --- Memoized InversionControl Component ---
+// Moved outside ChordProgressionEditor and memoized to prevent re-renders
+interface InversionControlProps {
+  chord: ChordDefinition;
+  onUpdate: (id: string, inversion: number) => void;
+}
+
+const InversionControl: React.FC<InversionControlProps> = React.memo(({ chord, onUpdate }) => {
+  const numNotes = CHORD_INTERVALS[chord.type]?.length || 3;
+  const maxInversions = numNotes - 1;
+
+  return (
+    <div className="flex items-center space-x-1">
+      <span className="text-xs text-gray-400 mr-1">轉位:</span>
+      {[0, 1, 2].map(invValue => {
+        const isDisabled = invValue > maxInversions;
+        return (
+          <button
+            key={invValue}
+            disabled={isDisabled}
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdate(chord.id, invValue);
+            }}
+            className={`
+              w-5 h-5 text-xs font-mono rounded-sm transition-colors
+              flex items-center justify-center
+              ${chord.inversion === invValue ? 'bg-blue-500 text-white' : 'bg-gray-500 hover:bg-gray-400 text-gray-200'}
+              ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+            aria-label={`設定為第 ${invValue} 轉位`}
+          >
+            {invValue}
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+InversionControl.displayName = 'InversionControl';
+
 
 const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   progression,
@@ -81,39 +122,6 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
     return null;
   };
 
-  const InversionControl = ({ chord }: { chord: ChordDefinition }) => {
-    const numNotes = CHORD_INTERVALS[chord.type]?.length || 3;
-    const maxInversions = numNotes - 1; // 3 notes -> 2 inversions, 4 notes -> 3 inversions
-
-    return (
-      <div className="flex items-center space-x-1">
-        <span className="text-xs text-gray-400 mr-1">轉位:</span>
-        {[0, 1, 2].map(invValue => {
-          const isDisabled = invValue > maxInversions;
-          return (
-            <button
-              key={invValue}
-              disabled={isDisabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateChordInversion(chord.id, invValue);
-              }}
-              className={`
-                w-5 h-5 text-xs font-mono rounded-sm transition-colors
-                flex items-center justify-center
-                ${chord.inversion === invValue ? 'bg-blue-500 text-white' : 'bg-gray-500 hover:bg-gray-400 text-gray-200'}
-                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-              aria-label={`設定為第 ${invValue} 轉位`}
-            >
-              {invValue}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className="p-4 bg-gray-700 rounded-lg shadow-md h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
@@ -154,7 +162,7 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
                     </span>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <InversionControl chord={chord} />
+                    <InversionControl chord={chord} onUpdate={onUpdateChordInversion} />
                     <button
                       onClick={() => onRemoveChord(chord.id)}
                       className="p-1.5 text-xs bg-red-500 hover:bg-red-600 rounded text-white transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
