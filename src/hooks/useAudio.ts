@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
@@ -355,10 +354,10 @@ export const useAudio = (
       
       // Global Effects
       if (!globalReverb.current || globalReverb.current.disposed) {
-        globalReverb.current = new ToneRef.Reverb({ decay: 7, wet: 0 }).toDestination();
+        globalReverb.current = new ToneRef.Reverb({ decay: 1.5, wet: 0 }).toDestination();
       }
       if (!globalDelay.current || globalDelay.current.disposed) {
-        globalDelay.current = new ToneRef.FeedbackDelay({delayTime: "8n.", feedback: 0.7}).toDestination();
+        globalDelay.current = new ToneRef.FeedbackDelay({delayTime: "8n.", feedback: 0.5}).toDestination();
         globalDelay.current.wet.value = 0;
       }
       
