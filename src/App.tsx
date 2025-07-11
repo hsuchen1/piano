@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import PianoKeyboard from './components/PianoKeyboard';
@@ -6,6 +7,7 @@ import ChordSelector from './components/ChordSelector';
 import ChordProgressionEditor from './components/ChordProgressionEditor';
 import AccompanimentControls from './components/AccompanimentControls';
 import SavedProgressions from './components/SavedProgressions';
+import TutorialModal from './components/TutorialModal'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
@@ -59,6 +61,7 @@ const App: React.FC = () => {
   const [isBeat, setIsBeat] = useState(false);
   const [showAccompanimentNotes, setShowAccompanimentNotes] = useState(true);
   const [accompanimentActiveNotes, setAccompanimentActiveNotes] = useState<Set<string>>(new Set());
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false); // State for the tutorial modal
 
   const [savedProgressions, setSavedProgressions] = useState<Record<string, SavedProgressionEntry>>(() => {
     let loadedProgressions: Record<string, SavedProgressionEntry> = {};
@@ -504,141 +507,153 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-800 text-gray-100 selection:bg-purple-500 selection:text-white">
-      <div className="container mx-auto p-2 sm:p-4 flex flex-col items-center space-y-4 sm:space-y-6">
-        <header className="text-center my-3 sm:my-5">
-          <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
-            互動鋼琴工作室
-          </h1>
-          <p className="text-gray-300 mt-2 text-xs sm:text-base">自由彈奏、移調，並創造您的和弦、鼓組與貝斯伴奏。</p>
-        </header>
+    <>
+      <TutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
+      <div className="min-h-screen bg-gray-800 text-gray-100 selection:bg-purple-500 selection:text-white">
+        <div className="container mx-auto p-2 sm:p-4 flex flex-col items-center space-y-4 sm:space-y-6">
+          <header className="text-center my-3 sm:my-5">
+            <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+              互動鋼琴工作室
+            </h1>
+            <p className="text-gray-300 mt-2 text-xs sm:text-base">自由彈奏、編曲，並透過多樣樂器與效果，打造您的專屬伴奏。</p>
+            <button
+              onClick={() => setIsTutorialOpen(true)}
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              使用教學
+            </button>
+          </header>
 
-        <PianoKeyboard
-            onNoteAttack={handleNoteAttack}
-            onNoteRelease={handleNoteRelease}
-            pressedKeys={pressedComputerKeys}
-            accompanimentActiveNotes={showAccompanimentNotes ? accompanimentActiveNotes : new Set()}
-        />
+          <PianoKeyboard
+              onNoteAttack={handleNoteAttack}
+              onNoteRelease={handleNoteRelease}
+              pressedKeys={pressedComputerKeys}
+              accompanimentActiveNotes={showAccompanimentNotes ? accompanimentActiveNotes : new Set()}
+          />
 
-        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <div className="space-y-4 sm:space-y-6">
-            <TranspositionControl
-              currentTransposition={audio.currentTransposition}
-              onTransposeChange={audio.setTransposition}
-            />
-            <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-3">
-                 <h3 className="text-lg font-semibold text-gray-100">主鍵盤設定 (Main Keyboard)</h3>
-                 <div>
-                    <label htmlFor="userPianoInstrument" className="block text-sm font-medium text-gray-300 mb-1">音色 (Instrument)</label>
-                    <select
-                        id="userPianoInstrument"
-                        value={audio.currentUserPianoInstrument}
-                        onChange={(e) => audio.setUserPianoInstrument(e.target.value as UserPianoInstrument)}
-                        className="w-full p-2.5 bg-gray-600 border border-gray-500 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        aria-label="選擇您的鋼琴音色"
-                        disabled={audio.isPianoLoading}
-                    >
-                        {USER_PIANO_INSTRUMENT_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                    {audio.isPianoLoading && (
-                        <p className="text-xs text-yellow-400 text-center mt-2">鋼琴音色載入中...</p>
-                    )}
-                 </div>
-                 <div>
-                    <label htmlFor="userPianoVolume" className="block text-sm font-medium text-gray-300 mb-1">音量 (Volume): {userPianoVolume.toFixed(0)} dB</label>
-                    <input
-                        type="range"
-                        id="userPianoVolume"
-                        min={MIN_USER_PIANO_VOLUME}
-                        max={MAX_USER_PIANO_VOLUME}
-                        step="1"
-                        value={userPianoVolume}
-                        onChange={(e) => handleUserPianoVolumeChange(parseFloat(e.target.value))}
-                        className="w-full h-2.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                        aria-label="調整主鍵盤音量"
-                    />
-                 </div>
-                 <div className="flex items-center justify-between pt-2">
-                    <label htmlFor="showAccompanimentNotes" className="text-sm font-medium text-gray-300">顯示伴奏音符</label>
-                    <button
-                        id="showAccompanimentNotes"
-                        onClick={() => setShowAccompanimentNotes(!showAccompanimentNotes)}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${showAccompanimentNotes ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-400'}`}
-                        aria-pressed={showAccompanimentNotes}
-                    >
-                        {showAccompanimentNotes ? '已啟用' : '已停用'}
-                    </button>
-                 </div>
+          <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-4 sm:space-y-6">
+              <TranspositionControl
+                currentTransposition={audio.currentTransposition}
+                onTransposeChange={audio.setTransposition}
+              />
+              <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-3">
+                   <h3 className="text-lg font-semibold text-gray-100">主鍵盤設定 (Main Keyboard)</h3>
+                   <div>
+                      <label htmlFor="userPianoInstrument" className="block text-sm font-medium text-gray-300 mb-1">音色 (Instrument)</label>
+                      <select
+                          id="userPianoInstrument"
+                          value={audio.currentUserPianoInstrument}
+                          onChange={(e) => audio.setUserPianoInstrument(e.target.value as UserPianoInstrument)}
+                          className="w-full p-2.5 bg-gray-600 border border-gray-500 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          aria-label="選擇您的鋼琴音色"
+                          disabled={audio.isPianoLoading}
+                      >
+                          {USER_PIANO_INSTRUMENT_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                      </select>
+                      {audio.isPianoLoading && (
+                          <p className="text-xs text-yellow-400 text-center mt-2">鋼琴音色載入中...</p>
+                      )}
+                   </div>
+                   <div>
+                      <label htmlFor="userPianoVolume" className="block text-sm font-medium text-gray-300 mb-1">音量 (Volume): {userPianoVolume.toFixed(0)} dB</label>
+                      <input
+                          type="range"
+                          id="userPianoVolume"
+                          min={MIN_USER_PIANO_VOLUME}
+                          max={MAX_USER_PIANO_VOLUME}
+                          step="1"
+                          value={userPianoVolume}
+                          onChange={(e) => handleUserPianoVolumeChange(parseFloat(e.target.value))}
+                          className="w-full h-2.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          aria-label="調整主鍵盤音量"
+                      />
+                   </div>
+                   <div className="flex items-center justify-between pt-2">
+                      <label htmlFor="showAccompanimentNotes" className="text-sm font-medium text-gray-300">顯示伴奏音符</label>
+                      <button
+                          id="showAccompanimentNotes"
+                          onClick={() => setShowAccompanimentNotes(!showAccompanimentNotes)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${showAccompanimentNotes ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-400'}`}
+                          aria-pressed={showAccompanimentNotes}
+                      >
+                          {showAccompanimentNotes ? '已啟用' : '已停用'}
+                      </button>
+                   </div>
+              </div>
+              <ChordSelector onAddChord={handleAddChord} />
+              <SavedProgressions
+                savedProgressions={savedProgressions}
+                onLoadProgression={handleLoadProgression}
+                onDeleteProgression={handleDeleteProgression}
+              />
             </div>
-            <ChordSelector onAddChord={handleAddChord} />
-            <SavedProgressions
-              savedProgressions={savedProgressions}
-              onLoadProgression={handleLoadProgression}
-              onDeleteProgression={handleDeleteProgression}
-            />
+            <div className="space-y-4 sm:space-y-6 flex flex-col">
+               <ChordProgressionEditor
+                progression={chordProgression}
+                onRemoveChord={handleRemoveChord}
+                onClearProgression={handleClearProgression}
+                onSaveProgression={handleSaveCurrentProgression}
+                onReorderProgression={handleReorderProgression}
+                onUpdateChordInversion={handleUpdateChordInversion}
+                currentlyPlayingChordIndex={currentlyPlayingChordIndex}
+              />
+              <AccompanimentControls
+                bpm={audio.currentBPM}
+                onBpmChange={audio.setAccompanimentBPM}
+                isBeat={isBeat}
+                accompanimentLayers={accompanimentLayers}
+                onAddAccompanimentLayer={handleAddAccompanimentLayer}
+                onRemoveAccompanimentLayer={handleRemoveAccompanimentLayer}
+                onUpdateAccompanimentLayer={handleUpdateAccompanimentLayer}
+                isPlaying={audio.isAccompanimentPlaying}
+                onPlay={audio.startAccompaniment}
+                onStop={handleStopAccompaniment}
+                isAudioReady={audio.isAudioReady}
+                chordProgressionEmpty={chordProgression.length === 0}
+                chordProgressionForCustomEditor={progressionWithIndices}
+                customRhythms={customRhythms}
+                onUpdateCustomBeat={handleUpdateCustomRhythmBeat}
+                // Effects and Groove
+                reverbLevel={reverbLevel}
+                onReverbLevelChange={handleReverbChange}
+                delayLevel={delayLevel}
+                onDelayLevelChange={handleDelayChange}
+                swing={swing}
+                onSwingChange={handleSwingChange}
+                // Drum Props
+                drumsEnabled={drumsEnabled}
+                onDrumsEnabledChange={setDrumsEnabled}
+                drumVolume={drumVolume}
+                onDrumVolumeChange={handleDrumVolumeChange}
+                drumPattern={drumPattern}
+                onDrumPatternChange={setDrumPattern}
+                customDrumData={customDrumData}
+                onUpdateCustomDrumCell={handleUpdateCustomDrumCell}
+                // Bass Props
+                bassEnabled={bassEnabled}
+                onBassEnabledChange={setBassEnabled}
+                bassVolume={bassVolume}
+                onBassVolumeChange={handleBassVolumeChange}
+                bassPattern={bassPattern}
+                onBassPatternChange={setBassPattern}
+                bassInstrument={bassInstrument}
+                onBassInstrumentChange={setBassInstrument}
+              />
+            </div>
           </div>
-          <div className="space-y-4 sm:space-y-6 flex flex-col">
-             <ChordProgressionEditor
-              progression={chordProgression}
-              onRemoveChord={handleRemoveChord}
-              onClearProgression={handleClearProgression}
-              onSaveProgression={handleSaveCurrentProgression}
-              onReorderProgression={handleReorderProgression}
-              onUpdateChordInversion={handleUpdateChordInversion}
-              currentlyPlayingChordIndex={currentlyPlayingChordIndex}
-            />
-            <AccompanimentControls
-              bpm={audio.currentBPM}
-              onBpmChange={audio.setAccompanimentBPM}
-              isBeat={isBeat}
-              accompanimentLayers={accompanimentLayers}
-              onAddAccompanimentLayer={handleAddAccompanimentLayer}
-              onRemoveAccompanimentLayer={handleRemoveAccompanimentLayer}
-              onUpdateAccompanimentLayer={handleUpdateAccompanimentLayer}
-              isPlaying={audio.isAccompanimentPlaying}
-              onPlay={audio.startAccompaniment}
-              onStop={handleStopAccompaniment}
-              isAudioReady={audio.isAudioReady}
-              chordProgressionEmpty={chordProgression.length === 0}
-              chordProgressionForCustomEditor={progressionWithIndices}
-              customRhythms={customRhythms}
-              onUpdateCustomBeat={handleUpdateCustomRhythmBeat}
-              // Effects and Groove
-              reverbLevel={reverbLevel}
-              onReverbLevelChange={handleReverbChange}
-              delayLevel={delayLevel}
-              onDelayLevelChange={handleDelayChange}
-              swing={swing}
-              onSwingChange={handleSwingChange}
-              // Drum Props
-              drumsEnabled={drumsEnabled}
-              onDrumsEnabledChange={setDrumsEnabled}
-              drumVolume={drumVolume}
-              onDrumVolumeChange={handleDrumVolumeChange}
-              drumPattern={drumPattern}
-              onDrumPatternChange={setDrumPattern}
-              customDrumData={customDrumData}
-              onUpdateCustomDrumCell={handleUpdateCustomDrumCell}
-              // Bass Props
-              bassEnabled={bassEnabled}
-              onBassEnabledChange={setBassEnabled}
-              bassVolume={bassVolume}
-              onBassVolumeChange={handleBassVolumeChange}
-              bassPattern={bassPattern}
-              onBassPatternChange={setBassPattern}
-              bassInstrument={bassInstrument}
-              onBassInstrumentChange={setBassInstrument}
-            />
-          </div>
+          <footer className="text-center text-gray-500 text-xs sm:text-sm mt-6 sm:mt-8 pb-4">
+            <p>技術支持：React, Tailwind CSS, Tone.js</p>
+            <p>&copy; {new Date().getFullYear()} by hsuchen</p>
+          </footer>
         </div>
-        <footer className="text-center text-gray-500 text-xs sm:text-sm mt-6 sm:mt-8 pb-4">
-          <p>技術支持：React, Tailwind CSS, Tone.js</p>
-          <p>&copy; {new Date().getFullYear()} by hsuchen</p>
-        </footer>
       </div>
-    </div>
+    </>
   );
 };
 
