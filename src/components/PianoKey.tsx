@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PianoKeyData, NoteName } from '../types';
 

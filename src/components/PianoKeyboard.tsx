@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ALL_PIANO_KEYS } from '../constants';
 import { NoteName, PianoKeyData } from '../types';

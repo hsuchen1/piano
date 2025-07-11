@@ -1,22 +1,21 @@
-
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import PianoKeyboard from './components/PianoKeyboard.tsx';
-import TranspositionControl from './components/TranspositionControl.tsx';
-import ChordSelector from './components/ChordSelector.tsx';
-import ChordProgressionEditor from './components/ChordProgressionEditor.tsx';
-import AccompanimentControls from './components/AccompanimentControls.tsx';
-import SavedProgressions from './components/SavedProgressions.tsx';
-import { useAudio, UseAudioReturn } from './hooks/useAudio.ts';
+import PianoKeyboard from './components/PianoKeyboard';
+import TranspositionControl from './components/TranspositionControl';
+import ChordSelector from './components/ChordSelector';
+import ChordProgressionEditor from './components/ChordProgressionEditor';
+import AccompanimentControls from './components/AccompanimentControls';
+import SavedProgressions from './components/SavedProgressions';
+import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, ChordType
+  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer
 } from './types';
 import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, CHORD_INTERVALS
+  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER
 } from './constants';
 
 export interface ChordWithIndex extends ChordDefinition {

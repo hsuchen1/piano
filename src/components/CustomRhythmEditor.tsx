@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { ChordWithIndex } from '../App';
 import { BeatDuration } from '../types';
