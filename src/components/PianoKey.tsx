@@ -15,19 +15,24 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
 
   const isEffectivelyPressed = isComputerKeyPressed || isMouseActive;
 
-  const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-75 ease-in-out relative group";
+  // Use a longer duration for a smoother press/release animation
+  const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-100 ease-out relative group";
   
+  // A "pressed in" effect for white keys using scale and inner shadow.
+  // The `origin-bottom` and `scale-y` makes the key appear to sink from the top.
   const whiteKeyStyles = `bg-white text-black h-48 w-10 hover:bg-gray-200 shadow-sm`; 
-  const pressedWhiteKeyStyles = "bg-gray-400 transform scale-y-[0.98] origin-bottom";
+  const pressedWhiteKeyStyles = "bg-gray-300 shadow-inner transform scale-y-[.98] origin-bottom";
   const accompanimentWhiteKeyStyles = "bg-blue-200";
 
+  // A "pressed in" effect for black keys.
   const blackKeyStyles = `bg-gray-800 text-white h-32 w-6 hover:bg-gray-700 absolute z-10 shadow-md border-l-2 border-r-2 border-b-4 border-gray-900`; 
-  const pressedBlackKeyStyles = "bg-gray-600 transform scale-y-[0.97] origin-bottom";
+  const pressedBlackKeyStyles = "bg-black border-b-2 border-black shadow-sm transform scale-y-[.97] origin-bottom";
   const accompanimentBlackKeyStyles = "bg-blue-800";
 
   let keySpecificStyles;
   if (isBlack) {
     keySpecificStyles = blackKeyStyles;
+    // User press feedback takes priority over accompaniment highlight
     if (isEffectivelyPressed) {
       keySpecificStyles += ` ${pressedBlackKeyStyles}`;
     } else if (isAccompanimentActive) {
@@ -35,6 +40,7 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
     }
   } else {
     keySpecificStyles = whiteKeyStyles;
+    // User press feedback takes priority over accompaniment highlight
     if (isEffectivelyPressed) {
       keySpecificStyles += ` ${pressedWhiteKeyStyles}`;
     } else if (isAccompanimentActive) {
