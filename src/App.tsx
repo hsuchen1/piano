@@ -52,9 +52,14 @@ const App: React.FC = () => {
 
   // New state for playback highlighting and effects
   const [currentlyPlayingChordIndex, setCurrentlyPlayingChordIndex] = useState<number | null>(null);
-  const [reverbLevel, setReverbLevel] = useState(0);
-  const [delayLevel, setDelayLevel] = useState(0);
+  const [reverbLevel, setReverbLevel] = useState(0.1);
+  const [delayLevel, setDelayLevel] = useState(0.1);
   const [swing, setSwing] = useState(0);
+
+  // New state for UI interactivity
+  const [isBeat, setIsBeat] = useState(false);
+  const [showAccompanimentNotes, setShowAccompanimentNotes] = useState(true);
+  const [accompanimentActiveNotes, setAccompanimentActiveNotes] = useState<Set<string>>(new Set());
 
   const [savedProgressions, setSavedProgressions] = useState<Record<string, SavedProgressionEntry>>(() => {
     let loadedProgressions: Record<string, SavedProgressionEntry> = {};
@@ -134,7 +139,10 @@ const App: React.FC = () => {
     bassPattern,
     bassInstrument,
     userPianoVolume,
-    setCurrentlyPlayingChordIndex
+    setCurrentlyPlayingChordIndex,
+    setIsBeat,
+    setAccompanimentActiveNotes,
+    showAccompanimentNotes
   );
   
   const handleStopAccompaniment = useCallback(() => {
@@ -510,6 +518,7 @@ const App: React.FC = () => {
             onNoteAttack={handleNoteAttack}
             onNoteRelease={handleNoteRelease}
             pressedKeys={pressedComputerKeys}
+            accompanimentActiveNotes={showAccompanimentNotes ? accompanimentActiveNotes : new Set()}
         />
 
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -552,6 +561,17 @@ const App: React.FC = () => {
                         aria-label="調整主鍵盤音量"
                     />
                  </div>
+                 <div className="flex items-center justify-between pt-2">
+                    <label htmlFor="showAccompanimentNotes" className="text-sm font-medium text-gray-300">顯示伴奏音符</label>
+                    <button
+                        id="showAccompanimentNotes"
+                        onClick={() => setShowAccompanimentNotes(!showAccompanimentNotes)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${showAccompanimentNotes ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-400'}`}
+                        aria-pressed={showAccompanimentNotes}
+                    >
+                        {showAccompanimentNotes ? '已啟用' : '已停用'}
+                    </button>
+                 </div>
             </div>
             <ChordSelector onAddChord={handleAddChord} />
             <SavedProgressions
@@ -573,6 +593,7 @@ const App: React.FC = () => {
             <AccompanimentControls
               bpm={audio.currentBPM}
               onBpmChange={audio.setAccompanimentBPM}
+              isBeat={isBeat}
               accompanimentLayers={accompanimentLayers}
               onAddAccompanimentLayer={handleAddAccompanimentLayer}
               onRemoveAccompanimentLayer={handleRemoveAccompanimentLayer}

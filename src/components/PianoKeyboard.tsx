@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ALL_PIANO_KEYS } from '../constants';
 import { NoteName, PianoKeyData } from '../types';
@@ -7,9 +8,10 @@ interface PianoKeyboardProps {
   onNoteAttack: (noteName: NoteName, octave: number) => void;
   onNoteRelease: (noteName: NoteName, octave: number) => void;
   pressedKeys: Set<string>; // Set of fullNoteNames (e.g., "C#4") pressed by computer
+  accompanimentActiveNotes: Set<string>; // Notes played by accompaniment
 }
 
-const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onNoteAttack, onNoteRelease, pressedKeys }) => {
+const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onNoteAttack, onNoteRelease, pressedKeys, accompanimentActiveNotes }) => {
   const whiteKeyCount = ALL_PIANO_KEYS.filter(k => !k.isBlack).length;
   const approxWhiteKeyWidthPx = 40;
   const estimatedMinWidth = whiteKeyCount * approxWhiteKeyWidthPx;
@@ -28,6 +30,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onNoteAttack, onNoteRelea
               onNoteAttack={onNoteAttack}
               onNoteRelease={onNoteRelease}
               isComputerKeyPressed={pressedKeys.has(keyData.fullName)}
+              isAccompanimentActive={accompanimentActiveNotes.has(keyData.fullName)}
             />
           ))}
         </div>
