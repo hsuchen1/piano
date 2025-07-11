@@ -83,6 +83,11 @@ export enum DrumPattern {
   JazzSwing = "JazzSwing",
   Latin = "Latin",
   EDM = "EDM",
+  Ballad = "Ballad", // New
+  SlowPop = "SlowPop", // New
+  HipHop = "HipHop", // New
+  BossaNova = "BossaNova", // New
+  Reggae = "Reggae", // New
   Custom = "Custom",
   Off = "Off", // To explicitly turn off drums
 }

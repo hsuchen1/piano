@@ -141,11 +141,16 @@ export const DRUM_INSTRUMENT_OPTIONS: { value: DrumInstrument; label: string }[]
 
 export const DRUM_PATTERN_OPTIONS: { value: DrumPattern; label: string }[] = [
     { value: DrumPattern.Off, label: "關閉 (Off)" },
-    { value: DrumPattern.Rock, label: "搖滾 (Rock)" },
+    { value: DrumPattern.Ballad, label: "抒情歌 (Ballad)" },
+    { value: DrumPattern.SlowPop, label: "慢速流行 (Slow Pop)" },
     { value: DrumPattern.PopFunk, label: "流行/放克 (Pop/Funk)" },
+    { value: DrumPattern.Rock, label: "搖滾 (Rock)" },
+    { value: DrumPattern.HipHop, label: "嘻哈 (Hip-Hop)" },
+    { value: DrumPattern.EDM, label: "電子舞曲 (EDM)" },
     { value: DrumPattern.JazzSwing, label: "爵士搖擺 (Jazz Swing)" },
     { value: DrumPattern.Latin, label: "拉丁 (Latin)" },
-    { value: DrumPattern.EDM, label: "電子舞曲 (EDM)" },
+    { value: DrumPattern.BossaNova, label: "巴薩諾瓦 (Bossa Nova)" },
+    { value: DrumPattern.Reggae, label: "雷鬼 (Reggae)" },
     { value: DrumPattern.Custom, label: "自訂 (Custom)" },
 ];
 
@@ -260,6 +265,12 @@ export const PREDEFINED_DRUM_PATTERNS: Partial<Record<DrumPattern, CustomDrumCho
   [DrumPattern.JazzSwing]: createPattern([0, 9], [4, 13], [2, 5, 8, 11, 14]),
   [DrumPattern.Latin]: createPattern([0, 7, 8, 15], [4, 12], [0,2,4,5,6,8,10,12,13,14]),
   [DrumPattern.EDM]: createPattern([0, 4, 8, 12], [4, 12], [2, 6, 10, 14]),
+  // New Patterns
+  [DrumPattern.Ballad]: createPattern([0], [8], [0, 2, 4, 6, 8, 10, 12, 14]),
+  [DrumPattern.SlowPop]: createPattern([0, 6], [8], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+  [DrumPattern.HipHop]: createPattern([0, 7], [4, 12], [0, 2, 4, 6, 8, 10, 12, 14]),
+  [DrumPattern.BossaNova]: createPattern([0, 3, 8, 11], [4, 12], [0, 2, 4, 6, 8, 10, 12, 14]),
+  [DrumPattern.Reggae]: createPattern([8], [8], [2, 6, 10, 14]),
 };
 
 
