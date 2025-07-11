@@ -410,26 +410,6 @@ export const useAudio = (
     } catch (e) { console.error("Error starting Tone.js or initializing synths:", e); setIsAudioReady(false); return false; }
   }, [isAudioReady, currentBPM, currentUserPianoVolume, createAccompanimentSynthInstance, createUserPianoSynthInstance, createDrumSynths, drumVolumeProp, createBassSynthInstance, bassVolumeProp, connectToEffects, setBeatVisual]);
 
-  const stopAccompaniment = useCallback(() => {
-    if (!ToneRef) return;
-    setIsAccompanimentPlaying(false);
-    setCurrentlyPlayingChordIndex(null);
-    if (ToneRef.Transport.state === 'started') ToneRef.Transport.stop(ToneRef.now());
-    setAccompanimentNotes(new Set()); // Clear highlighted notes on stop
-
-    accompanimentSynths.current.forEach(entry => {
-        entry.synth.releaseAll(ToneRef.now());
-    });
-    
-    if(bassSynth.current && !(bassSynth.current as any).disposed) {
-        if (bassSynth.current instanceof ToneRef.Sampler) {
-            bassSynth.current.releaseAll(ToneRef.now());
-        } else { // It's a MonoSynth
-            (bassSynth.current as Tone.MonoSynth).triggerRelease(ToneRef.now());
-        }
-    }
-  }, [setCurrentlyPlayingChordIndex, setAccompanimentNotes]);
-
   const scheduleNoteHighlight = useCallback((notes: string[], startTime: number, duration: Tone.Unit.Time) => {
     if (!showAccompanimentNotesRef.current) return;
     const durationInSeconds = ToneRef.Time(duration).toSeconds();
@@ -446,120 +426,176 @@ export const useAudio = (
     }, startTime + durationInSeconds);
   }, [setAccompanimentNotes]);
 
+  // REVISED stopAccompaniment: Forceful and immediate.
+  const stopAccompaniment = useCallback(() => {
+    if (!ToneRef) return;
+    setIsAccompanimentPlaying(false);
+    setCurrentlyPlayingChordIndex(null);
 
-  useEffect(() => { // Main Accompaniment Sequence Logic
-    if (!isAudioReady || !ToneRef ) {
-        if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.dispose(); accompanimentSequence.current = null; }
+    // Immediate stop for responsiveness.
+    ToneRef.Transport.stop();
+    ToneRef.Transport.cancel();
+    
+    setAccompanimentNotes(new Set());
+
+    accompanimentSynths.current.forEach(entry => {
+        entry.synth.releaseAll();
+    });
+    if(bassSynth.current && !(bassSynth.current as any).disposed) {
+        if (bassSynth.current instanceof ToneRef.Sampler) {
+            bassSynth.current.releaseAll();
+        } else {
+            (bassSynth.current as Tone.MonoSynth).triggerRelease();
+        }
+    }
+  }, [setCurrentlyPlayingChordIndex, setAccompanimentNotes]);
+
+  // REVISED startAccompaniment: Cleaner, just sets the state to trigger the effect.
+  const startAccompaniment = useCallback(async () => {
+    if (!ToneRef) return;
+    const ready = isAudioReady ? true : await initializeAudio();
+    if (!ready || internalChordProgression.length === 0) return;
+    
+    setIsAccompanimentPlaying(true);
+  }, [isAudioReady, initializeAudio, internalChordProgression.length]);
+
+  // REVISED Main Accompaniment Sequence useEffect: Centralized logic.
+  useEffect(() => {
+    // If we are not supposed to be playing, do nothing. The `stopAccompaniment` function handles cleanup.
+    if (!isAccompanimentPlaying || !isAudioReady || !ToneRef || internalChordProgression.length === 0) {
         return;
     }
-    if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.dispose(); accompanimentSequence.current = null; }
 
-    if (internalChordProgression.length > 0) {
-      const newSequence = new ToneRef.Sequence<ChordWithIndex>(
-        (scheduledTimeInSeconds, chordDef) => {
-          ToneRef.Draw.schedule(() => {
-              setCurrentlyPlayingChordIndex(chordDef.originalIndex);
-          }, scheduledTimeInSeconds);
+    // --- At this point, we are supposed to be playing. ---
+
+    // 1. Create the sequence based on current data.
+    const newSequence = new ToneRef.Sequence<ChordWithIndex>(
+      (scheduledTimeInSeconds, chordDef) => {
+        ToneRef.Draw.schedule(() => {
+            setCurrentlyPlayingChordIndex(chordDef.originalIndex);
+        }, scheduledTimeInSeconds);
+        
+        // --- Multi-layer Chord Accompaniment ---
+        accompanimentLayersRef.current.forEach(layer => {
+          const synthEntry = accompanimentSynths.current.get(layer.id);
+          if (!synthEntry || (synthEntry.synth as any).disposed) return;
           
-          // --- Multi-layer Chord Accompaniment ---
-          accompanimentLayersRef.current.forEach(layer => {
-            const synthEntry = accompanimentSynths.current.get(layer.id);
-            if (!synthEntry || (synthEntry.synth as any).disposed) return;
-            
-            const { synth } = synthEntry;
-            const rhythmPattern = layer.rhythmPattern;
-            
-            if (rhythmPattern !== AccompanimentRhythmPattern.Custom) {
-              const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
-              const patternConfig = ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.find(p => p.value === rhythmPattern);
-              if (notes.length > 0 && patternConfig && patternConfig.hits) {
-                patternConfig.hits.forEach(hit => {
-                  const offset = ToneRef.Time(hit.offset as Tone.Unit.Time).toSeconds();
-                  const hitTime = scheduledTimeInSeconds + offset;
-                  synth.triggerAttackRelease(notes as any, hit.duration, hitTime);
-                  scheduleNoteHighlight(notes, hitTime, hit.duration);
-                });
-              }
-            } else { // Custom Rhythm
-               const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
-               const customRhythmForLayer = customRhythmsRef.current[layer.id];
-               const customChordBeatsConfig = customRhythmForLayer ? customRhythmForLayer[chordDef.originalIndex] : null;
-
-               if (notes.length > 0 && customChordBeatsConfig) {
-                  for (let mainBeatIdx = 0; mainBeatIdx < 4; mainBeatIdx++) {
-                      const fillType = customChordBeatsConfig[mainBeatIdx];
-                      if (fillType === "off") continue;
-                      const actualDuration: Tone.Unit.Time = fillType;
-                      const hitTimeOffsetSeconds = ToneRef.Time(`0:${mainBeatIdx}:0`).toSeconds();
-                      const absTime = scheduledTimeInSeconds + hitTimeOffsetSeconds;
-                      synth.triggerAttackRelease(notes as any, actualDuration, absTime);
-                      scheduleNoteHighlight(notes, absTime, actualDuration);
-                  }
-               }
+          const { synth } = synthEntry;
+          const rhythmPattern = layer.rhythmPattern;
+          
+          if (rhythmPattern !== AccompanimentRhythmPattern.Custom) {
+            const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
+            const patternConfig = ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.find(p => p.value === rhythmPattern);
+            if (notes.length > 0 && patternConfig && patternConfig.hits) {
+              patternConfig.hits.forEach(hit => {
+                const offset = ToneRef.Time(hit.offset as Tone.Unit.Time).toSeconds();
+                const hitTime = scheduledTimeInSeconds + offset;
+                synth.triggerAttackRelease(notes as any, hit.duration, hitTime);
+                scheduleNoteHighlight(notes, hitTime, hit.duration);
+              });
             }
-          });
+          } else { // Custom Rhythm
+             const notes = getChordNotes(chordDef, ACCOMPANIMENT_BASE_OCTAVE, currentTranspositionRef.current);
+             const customRhythmForLayer = customRhythmsRef.current[layer.id];
+             const customChordBeatsConfig = customRhythmForLayer ? customRhythmForLayer[chordDef.originalIndex] : null;
 
-          // Drum Accompaniment
-          if (drumsEnabledRef.current && drumPatternRef.current !== DrumPattern.Off) {
-            let currentDrumPatternForChord: CustomDrumChordPattern | undefined = undefined;
-            if (drumPatternRef.current === DrumPattern.Custom) {
-              currentDrumPatternForChord = customDrumDataRef.current[chordDef.originalIndex];
-            } else {
-              currentDrumPatternForChord = PREDEFINED_DRUM_PATTERNS[drumPatternRef.current];
-            }
+             if (notes.length > 0 && customChordBeatsConfig) {
+                for (let mainBeatIdx = 0; mainBeatIdx < 4; mainBeatIdx++) {
+                    const fillType = customChordBeatsConfig[mainBeatIdx];
+                    if (fillType === "off") continue;
+                    const actualDuration: Tone.Unit.Time = fillType;
+                    const hitTimeOffsetSeconds = ToneRef.Time(`0:${mainBeatIdx}:0`).toSeconds();
+                    const absTime = scheduledTimeInSeconds + hitTimeOffsetSeconds;
+                    synth.triggerAttackRelease(notes as any, actualDuration, absTime);
+                    scheduleNoteHighlight(notes, absTime, actualDuration);
+                }
+             }
+          }
+        });
 
-            if (currentDrumPatternForChord) {
-              for (let beat = 0; beat < NUM_BEATS_PER_DRUM_MEASURE; beat++) {
-                for (let sub = 0; sub < NUM_SUBDIVISIONS_PER_DRUM_BEAT; sub++) {
-                  const subdivisionOffset = ToneRef.Time(`0:${beat}:${sub}`).toSeconds();
-                  const drumHitTime = scheduledTimeInSeconds + subdivisionOffset;
-                  (Object.keys(DrumInstrument) as Array<keyof typeof DrumInstrument>).forEach(key => {
-                    const drumInst = DrumInstrument[key];
-                    if (currentDrumPatternForChord && currentDrumPatternForChord[drumInst]?.[beat]?.[sub]) {
-                      const synth = drumSynths.current[drumInst];
-                      if (synth && !(synth as any).disposed) {
-                        if (drumInst === DrumInstrument.Kick) {
-                            synth.triggerAttackRelease("C2", DRUM_NOTE_DURATION, drumHitTime);
-                        } else if (drumInst === DrumInstrument.Tom1) {
-                            synth.triggerAttackRelease("G2", DRUM_NOTE_DURATION, drumHitTime);
-                        } else if (drumInst === DrumInstrument.CrashCymbal) {
-                            ToneRef.Draw.schedule(() => {
-                                if (synth && !(synth as any).disposed) {
-                                    (synth as Tone.MetalSynth).triggerAttack(drumHitTime);
-                                }
-                            }, drumHitTime);
-                        } else {
-                            synth.triggerAttackRelease(DRUM_NOTE_DURATION, drumHitTime);
-                        }
+        // Drum Accompaniment
+        if (drumsEnabledRef.current && drumPatternRef.current !== DrumPattern.Off) {
+          let currentDrumPatternForChord: CustomDrumChordPattern | undefined = undefined;
+          if (drumPatternRef.current === DrumPattern.Custom) {
+            currentDrumPatternForChord = customDrumDataRef.current[chordDef.originalIndex];
+          } else {
+            currentDrumPatternForChord = PREDEFINED_DRUM_PATTERNS[drumPatternRef.current];
+          }
+
+          if (currentDrumPatternForChord) {
+            for (let beat = 0; beat < NUM_BEATS_PER_DRUM_MEASURE; beat++) {
+              for (let sub = 0; sub < NUM_SUBDIVISIONS_PER_DRUM_BEAT; sub++) {
+                const subdivisionOffset = ToneRef.Time(`0:${beat}:${sub}`).toSeconds();
+                const drumHitTime = scheduledTimeInSeconds + subdivisionOffset;
+                (Object.keys(DrumInstrument) as Array<keyof typeof DrumInstrument>).forEach(key => {
+                  const drumInst = DrumInstrument[key];
+                  if (currentDrumPatternForChord && currentDrumPatternForChord[drumInst]?.[beat]?.[sub]) {
+                    const synth = drumSynths.current[drumInst];
+                    if (synth && !(synth as any).disposed) {
+                      if (drumInst === DrumInstrument.Kick) {
+                          synth.triggerAttackRelease("C2", DRUM_NOTE_DURATION, drumHitTime);
+                      } else if (drumInst === DrumInstrument.Tom1) {
+                          synth.triggerAttackRelease("G2", DRUM_NOTE_DURATION, drumHitTime);
+                      } else if (drumInst === DrumInstrument.CrashCymbal) {
+                          ToneRef.Draw.schedule(() => {
+                              if (synth && !(synth as any).disposed) {
+                                  (synth as Tone.MetalSynth).triggerAttack(drumHitTime);
+                              }
+                          }, drumHitTime);
+                      } else {
+                          synth.triggerAttackRelease(DRUM_NOTE_DURATION, drumHitTime);
                       }
                     }
-                  });
-                }
+                  }
+                });
               }
             }
           }
+        }
 
-          // Bass Accompaniment
-          if (bassEnabledRef.current && bassSynth.current && !(bassSynth.current as any).disposed && bassPatternRef.current !== BassPattern.Off) {
-            const bassNotes = getBassNotesForPattern(chordDef, bassPatternRef.current, BASS_DEFAULT_OCTAVE, currentTranspositionRef.current);
-            bassNotes.forEach(bassNoteEvent => {
-              const offset = ToneRef.Time(bassNoteEvent.timeOffset).toSeconds();
-              const hitTime = scheduledTimeInSeconds + offset;
-              bassSynth.current!.triggerAttackRelease(bassNoteEvent.note, bassNoteEvent.duration, hitTime);
-              scheduleNoteHighlight([bassNoteEvent.note], hitTime, bassNoteEvent.duration);
-            });
-          }
-        },
-        internalChordProgression, "1m"
-      );
-      newSequence.loop = true; accompanimentSequence.current = newSequence;
-      if (isAccompanimentPlaying && ToneRef.Transport.state !== 'started') { ToneRef.Transport.start(ToneRef.now() + 0.1); newSequence.start(ToneRef.Transport.seconds + 0.15); }
-      else if (isAccompanimentPlaying && newSequence.state !== 'started') { newSequence.start(ToneRef.Transport.seconds + 0.05); }
+        // Bass Accompaniment
+        if (bassEnabledRef.current && bassSynth.current && !(bassSynth.current as any).disposed && bassPatternRef.current !== BassPattern.Off) {
+          const bassNotes = getBassNotesForPattern(chordDef, bassPatternRef.current, BASS_DEFAULT_OCTAVE, currentTranspositionRef.current);
+          bassNotes.forEach(bassNoteEvent => {
+            const offset = ToneRef.Time(bassNoteEvent.timeOffset).toSeconds();
+            const hitTime = scheduledTimeInSeconds + offset;
+            bassSynth.current!.triggerAttackRelease(bassNoteEvent.note, bassNoteEvent.duration, hitTime);
+            scheduleNoteHighlight([bassNoteEvent.note], hitTime, bassNoteEvent.duration);
+          });
+        }
+      },
+      internalChordProgression, "1m"
+    );
+    
+    // 2. Configure and start playback.
+    newSequence.loop = true;
+    accompanimentSequence.current = newSequence;
 
-    } else if (isAccompanimentPlaying) { stopAccompaniment(); }
+    // Ensure transport is stopped before starting to avoid time errors.
+    ToneRef.Transport.stop(); 
+    ToneRef.Transport.cancel();
+
+    newSequence.start(0);
+    ToneRef.Transport.start(ToneRef.now() + 0.1);
+
+    // 3. The cleanup function is critical for preventing race conditions.
+    return () => {
+        if (ToneRef.Transport.state === 'started') {
+            ToneRef.Transport.stop();
+            ToneRef.Transport.cancel();
+        }
+        if (newSequence) {
+            newSequence.dispose();
+        }
+        if (accompanimentSequence.current) {
+            accompanimentSequence.current.dispose();
+            accompanimentSequence.current = null;
+        }
+    };
   }, [
-    internalChordProgression, isAudioReady, isAccompanimentPlaying,
-    stopAccompaniment, setCurrentlyPlayingChordIndex, scheduleNoteHighlight
+      isAccompanimentPlaying, // The main state trigger
+      internalChordProgression, isAudioReady, // Data triggers
+      setCurrentlyPlayingChordIndex, scheduleNoteHighlight // Function dependencies for callback
   ]);
 
   const attackPianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
@@ -573,13 +609,6 @@ export const useAudio = (
     else { noteToRelease = getNoteFullName(noteName, octave, currentTranspositionRef.current); }
     if (noteToRelease && pianoSynth.current && !(pianoSynth.current as any).disposed && ToneRef && !isPianoLoading) pianoSynth.current.triggerRelease([noteToRelease] as any, ToneRef.now() + PIANO_NOTE_RELEASE_TIME);
   }, [isPianoLoading]);
-
-  const startAccompaniment = useCallback(async () => {
-    if (!ToneRef) return; const ready = isAudioReady ? true : await initializeAudio(); if (!ready) return;
-    if (internalChordProgression.length === 0) return;
-    if (!isAccompanimentPlaying) setIsAccompanimentPlaying(true);
-    else if (ToneRef.Transport.state !== 'started') { ToneRef.Transport.start(ToneRef.now() + 0.05); if (accompanimentSequence.current && accompanimentSequence.current.state !== 'started') accompanimentSequence.current.start(ToneRef.Transport.seconds + 0.1); }
-  }, [isAudioReady, initializeAudio, internalChordProgression.length, isAccompanimentPlaying]);
 
   const setAccompanimentBPM = useCallback((bpm: number) => { setCurrentBPM(bpm); if (isAudioReady && ToneRef) ToneRef.Transport.bpm.value = bpm; }, [isAudioReady]);
   const setUserPianoVolume = useCallback((volume: number) => { setCurrentUserPianoVolume(volume); if (isAudioReady && userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) userPianoVolumeNode.current.volume.value = volume; }, [isAudioReady]);
