@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PianoKeyData, NoteName } from '../types';
 
@@ -6,23 +7,40 @@ interface PianoKeyProps {
   onNoteAttack: (noteName: NoteName, octave: number) => void;
   onNoteRelease: (noteName: NoteName, octave: number) => void;
   isComputerKeyPressed?: boolean;
+  isAccompanimentActive?: boolean;
 }
 
-const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteRelease, isComputerKeyPressed }) => {
+const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteRelease, isComputerKeyPressed, isAccompanimentActive }) => {
   const { note, octave, isBlack, displayName } = keyData;
   const [isMouseActive, setIsMouseActive] = React.useState(false);
 
   const isEffectivelyPressed = isComputerKeyPressed || isMouseActive;
 
   const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-75 ease-in-out relative group";
-  const whiteKeyStyles = `bg-white text-black h-48 w-10 hover:bg-gray-200 shadow-sm`; 
-  const blackKeyStyles = `bg-gray-800 text-white h-32 w-6 hover:bg-gray-700 absolute z-10 shadow-md border-l-2 border-r-2 border-b-4 border-gray-900`; 
   
-  const pressedEffectStyles = isBlack ? "bg-gray-600 transform scale-95" : "bg-gray-300 transform scale-95";
+  const whiteKeyStyles = `bg-white text-black h-48 w-10 hover:bg-gray-200 shadow-sm`; 
+  const pressedWhiteKeyStyles = "bg-gray-400 transform scale-y-[0.98] origin-bottom";
+  const accompanimentWhiteKeyStyles = "bg-blue-200";
 
-  let keySpecificStyles = isBlack ? blackKeyStyles : whiteKeyStyles;
-  if (isEffectivelyPressed) {
-    keySpecificStyles += ` ${pressedEffectStyles}`;
+  const blackKeyStyles = `bg-gray-800 text-white h-32 w-6 hover:bg-gray-700 absolute z-10 shadow-md border-l-2 border-r-2 border-b-4 border-gray-900`; 
+  const pressedBlackKeyStyles = "bg-gray-600 transform scale-y-[0.97] origin-bottom";
+  const accompanimentBlackKeyStyles = "bg-blue-800";
+
+  let keySpecificStyles;
+  if (isBlack) {
+    keySpecificStyles = blackKeyStyles;
+    if (isEffectivelyPressed) {
+      keySpecificStyles += ` ${pressedBlackKeyStyles}`;
+    } else if (isAccompanimentActive) {
+      keySpecificStyles += ` ${accompanimentBlackKeyStyles}`;
+    }
+  } else {
+    keySpecificStyles = whiteKeyStyles;
+    if (isEffectivelyPressed) {
+      keySpecificStyles += ` ${pressedWhiteKeyStyles}`;
+    } else if (isAccompanimentActive) {
+      keySpecificStyles += ` ${accompanimentWhiteKeyStyles}`;
+    }
   }
   
   const blackKeyMargin = "ml-[-0.75rem]";

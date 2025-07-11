@@ -84,8 +84,11 @@ export const useAudio = (
     bassPatternProp: BassPattern,
     bassInstrumentProp: BassInstrument,
     initialUserPianoVolume: number,
-    // New callback for highlighting
-    setCurrentlyPlayingChordIndex: (index: number | null) => void
+    // New callbacks
+    setCurrentlyPlayingChordIndex: (index: number | null) => void,
+    setBeatVisual: (active: boolean) => void,
+    setAccompanimentNotes: React.Dispatch<React.SetStateAction<Set<string>>>,
+    showAccompanimentNotes: boolean
 ): UseAudioReturn => {
   const [isAudioReady, setIsAudioReady] = useState(false);
   const pianoSynth = useRef<(Tone.PolySynth<Tone.Synth> | Tone.Sampler) | null>(null);
@@ -102,6 +105,8 @@ export const useAudio = (
   // Global Effects
   const globalReverb = useRef<Tone.Reverb | null>(null);
   const globalDelay = useRef<Tone.FeedbackDelay | null>(null);
+
+  const beatVisualizerLoop = useRef<Tone.Loop | null>(null);
 
   const activePianoNotesByKey = useRef<Map<string, string>>(new Map());
 
@@ -128,6 +133,7 @@ export const useAudio = (
   const bassEnabledRef = useRef(bassEnabledProp);
   const bassPatternRef = useRef(bassPatternProp);
   const bassInstrumentRef = useRef(bassInstrumentProp);
+  const showAccompanimentNotesRef = useRef(showAccompanimentNotes);
 
 
   useEffect(() => { currentTranspositionRef.current = currentTransposition; }, [currentTransposition]);
@@ -139,6 +145,7 @@ export const useAudio = (
   useEffect(() => { bassEnabledRef.current = bassEnabledProp; }, [bassEnabledProp]);
   useEffect(() => { bassPatternRef.current = bassPatternProp; }, [bassPatternProp]);
   useEffect(() => { bassInstrumentRef.current = bassInstrumentProp; }, [bassInstrumentProp]);
+  useEffect(() => { showAccompanimentNotesRef.current = showAccompanimentNotes; }, [showAccompanimentNotes]);
 
   useEffect(() => { setInternalChordProgression(progressionWithIndicesFromProps); }, [progressionWithIndicesFromProps]);
   useEffect(() => { customRhythmsRef.current = customRhythmsFromProps; }, [customRhythmsFromProps]);
@@ -348,10 +355,10 @@ export const useAudio = (
       
       // Global Effects
       if (!globalReverb.current || globalReverb.current.disposed) {
-        globalReverb.current = new ToneRef.Reverb({ decay: 5, wet: 0 }).toDestination();
+        globalReverb.current = new ToneRef.Reverb({ decay: 7, wet: 0 }).toDestination();
       }
       if (!globalDelay.current || globalDelay.current.disposed) {
-        globalDelay.current = new ToneRef.FeedbackDelay({delayTime: "8n.", feedback: 0.6}).toDestination();
+        globalDelay.current = new ToneRef.FeedbackDelay({delayTime: "8n.", feedback: 0.7}).toDestination();
         globalDelay.current.wet.value = 0;
       }
       
@@ -390,15 +397,26 @@ export const useAudio = (
       }
       if (!bassSynth.current || (bassSynth.current as any).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
 
+      // BPM Visualizer Loop
+      if (!beatVisualizerLoop.current) {
+        beatVisualizerLoop.current = new ToneRef.Loop(time => {
+            ToneRef.Draw.schedule(() => {
+                setBeatVisual(true);
+                setTimeout(() => setBeatVisual(false), 50);
+            }, time);
+        }, "4n").start(0);
+      }
+
       ToneRef.Transport.bpm.value = currentBPM; ToneRef.Transport.timeSignature = 4; setIsAudioReady(true); return true;
     } catch (e) { console.error("Error starting Tone.js or initializing synths:", e); setIsAudioReady(false); return false; }
-  }, [isAudioReady, currentBPM, currentUserPianoVolume, createAccompanimentSynthInstance, createUserPianoSynthInstance, createDrumSynths, drumVolumeProp, createBassSynthInstance, bassVolumeProp, connectToEffects]);
+  }, [isAudioReady, currentBPM, currentUserPianoVolume, createAccompanimentSynthInstance, createUserPianoSynthInstance, createDrumSynths, drumVolumeProp, createBassSynthInstance, bassVolumeProp, connectToEffects, setBeatVisual]);
 
   const stopAccompaniment = useCallback(() => {
     if (!ToneRef) return;
     setIsAccompanimentPlaying(false);
     setCurrentlyPlayingChordIndex(null);
     if (ToneRef.Transport.state === 'started') ToneRef.Transport.stop(ToneRef.now());
+    setAccompanimentNotes(new Set()); // Clear highlighted notes on stop
 
     accompanimentSynths.current.forEach(entry => {
         entry.synth.releaseAll(ToneRef.now());
@@ -411,7 +429,23 @@ export const useAudio = (
             (bassSynth.current as Tone.MonoSynth).triggerRelease(ToneRef.now());
         }
     }
-  }, [setCurrentlyPlayingChordIndex]);
+  }, [setCurrentlyPlayingChordIndex, setAccompanimentNotes]);
+
+  const scheduleNoteHighlight = useCallback((notes: string[], startTime: number, duration: Tone.Unit.Time) => {
+    if (!showAccompanimentNotesRef.current) return;
+    const durationInSeconds = ToneRef.Time(duration).toSeconds();
+    
+    ToneRef.Draw.schedule(() => {
+        setAccompanimentNotes(prev => new Set([...prev, ...notes]));
+    }, startTime);
+    ToneRef.Draw.schedule(() => {
+        setAccompanimentNotes(prev => {
+            const next = new Set(prev);
+            notes.forEach(n => next.delete(n));
+            return next;
+        });
+    }, startTime + durationInSeconds);
+  }, [setAccompanimentNotes]);
 
 
   useEffect(() => { // Main Accompaniment Sequence Logic
@@ -442,7 +476,9 @@ export const useAudio = (
               if (notes.length > 0 && patternConfig && patternConfig.hits) {
                 patternConfig.hits.forEach(hit => {
                   const offset = ToneRef.Time(hit.offset as Tone.Unit.Time).toSeconds();
-                  synth.triggerAttackRelease(notes as any, hit.duration, scheduledTimeInSeconds + offset);
+                  const hitTime = scheduledTimeInSeconds + offset;
+                  synth.triggerAttackRelease(notes as any, hit.duration, hitTime);
+                  scheduleNoteHighlight(notes, hitTime, hit.duration);
                 });
               }
             } else { // Custom Rhythm
@@ -458,6 +494,7 @@ export const useAudio = (
                       const hitTimeOffsetSeconds = ToneRef.Time(`0:${mainBeatIdx}:0`).toSeconds();
                       const absTime = scheduledTimeInSeconds + hitTimeOffsetSeconds;
                       synth.triggerAttackRelease(notes as any, actualDuration, absTime);
+                      scheduleNoteHighlight(notes, absTime, actualDuration);
                   }
                }
             }
@@ -508,7 +545,9 @@ export const useAudio = (
             const bassNotes = getBassNotesForPattern(chordDef, bassPatternRef.current, BASS_DEFAULT_OCTAVE, currentTranspositionRef.current);
             bassNotes.forEach(bassNoteEvent => {
               const offset = ToneRef.Time(bassNoteEvent.timeOffset).toSeconds();
-              bassSynth.current!.triggerAttackRelease(bassNoteEvent.note, bassNoteEvent.duration, scheduledTimeInSeconds + offset);
+              const hitTime = scheduledTimeInSeconds + offset;
+              bassSynth.current!.triggerAttackRelease(bassNoteEvent.note, bassNoteEvent.duration, hitTime);
+              scheduleNoteHighlight([bassNoteEvent.note], hitTime, bassNoteEvent.duration);
             });
           }
         },
@@ -521,7 +560,7 @@ export const useAudio = (
     } else if (isAccompanimentPlaying) { stopAccompaniment(); }
   }, [
     internalChordProgression, isAudioReady, isAccompanimentPlaying,
-    stopAccompaniment, setCurrentlyPlayingChordIndex
+    stopAccompaniment, setCurrentlyPlayingChordIndex, scheduleNoteHighlight
   ]);
 
   const attackPianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
@@ -566,21 +605,21 @@ export const useAudio = (
   const setReverbLevel = useCallback((level: number) => {
     if (isAudioReady && globalReverb.current) {
       // Use a curve to make the effect more noticeable earlier
-      globalReverb.current.wet.linearRampTo(Math.pow(level, 0.7), 0.1);
+      globalReverb.current.wet.linearRampTo(Math.pow(level, 0.6), 0.1);
     }
   }, [isAudioReady]);
 
   const setDelayLevel = useCallback((level: number) => {
     if (isAudioReady && globalDelay.current) {
       // Use a curve to make the effect more noticeable earlier
-      globalDelay.current.wet.linearRampTo(Math.pow(level, 0.7), 0.1);
+      globalDelay.current.wet.linearRampTo(Math.pow(level, 0.8), 0.1);
     }
   }, [isAudioReady]);
 
   const setSwing = useCallback((amount: number) => {
     if (isAudioReady && ToneRef) {
       // Apply swing directly for a more noticeable, linear effect
-      ToneRef.Transport.swing = amount;
+      ToneRef.Transport.swing = amount * 0.9;
     }
   }, [isAudioReady]);
 
@@ -617,6 +656,7 @@ export const useAudio = (
 
       if(globalReverb.current && !globalReverb.current.disposed) globalReverb.current.dispose();
       if(globalDelay.current && !globalDelay.current.disposed) globalDelay.current.dispose();
+      if(beatVisualizerLoop.current && !(beatVisualizerLoop.current as any).disposed) beatVisualizerLoop.current.dispose();
 
       if (drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.dispose();
       (Object.values(drumSynths.current) as (Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth)[])

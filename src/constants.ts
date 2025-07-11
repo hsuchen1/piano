@@ -335,8 +335,13 @@ export const KEY_MAPPING: { [key: string]: { note: NoteName; octave: number } } 
 };
 
 export const DEFAULT_CUSTOM_BEAT_DURATION: BeatDuration = "off";
-export const BEAT_DURATION_OPTIONS: { value: BeatDuration; label: string }[] = [
-  { value: "off", label: "關閉 (Off)" }, { value: "1n", label: "全音符 (Whole)" }, { value: "2n", label: "二分音符 (Half)" }, { value: "4n", label: "四分音符 (Quarter)" }, { value: "8n", label: "八分音符 (Eighth)" }, { value: "16n", label: "十六分音符 (Sixteenth)" },
+export const BEAT_DURATION_OPTIONS: { value: BeatDuration; label: string; shortLabel: string; }[] = [
+  { value: "off", label: "關閉 (Off)", shortLabel: "X" }, 
+  { value: "1n", label: "全音符 (Whole)", shortLabel: "1" }, 
+  { value: "2n", label: "二分音符 (Half)", shortLabel: "2" }, 
+  { value: "4n", label: "四分音符 (Quarter)", shortLabel: "4" }, 
+  { value: "8n", label: "八分音符 (Eighth)", shortLabel: "8" }, 
+  { value: "16n", label: "十六分音符 (Sixteenth)", shortLabel: "16"},
 ];
 
 export const SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY = 'interactivePianoStudio_savedProgressions_v4';
