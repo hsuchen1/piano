@@ -1,4 +1,3 @@
-
 export type NoteName = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
 
 export interface PianoKeyData {
@@ -116,6 +115,8 @@ export enum BassPattern {
   RootAndFifth = "RootAndFifth", // Root on 1, Fifth on 3
   SimpleArpeggio = "SimpleArpeggio", // 1-3-5-8 over the measure
   WalkingBassSimple = "WalkingBassSimple", // Simplified walking bass
+  WalkingBassMelodic = "WalkingBassMelodic",
+  FunkSlap = "FunkSlap",
 }
 
 export interface SavedProgressionEntry {

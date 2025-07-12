@@ -205,6 +205,8 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
     { value: BassPattern.RootAndFifth, label: "根音與五音 (Root & Fifth)" },
     { value: BassPattern.SimpleArpeggio, label: "簡單琶音 (Simple Arpeggio)" },
     { value: BassPattern.WalkingBassSimple, label: "簡易行走貝斯 (Simple Walking Bass)" },
+    { value: BassPattern.WalkingBassMelodic, label: "旋律行走貝斯 (Melodic Walking Bass)" },
+    { value: BassPattern.FunkSlap, label: "放克貝斯線 (Funk Slap)" },
 ];
 
 export const BASS_SYNTH_CONFIGS: Record<Exclude<BassInstrument, BassInstrument.PopPulseBass>, any> = {
