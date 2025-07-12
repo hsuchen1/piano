@@ -544,7 +544,8 @@ const App: React.FC = () => {
       console.error("Error generating chord progression:", error);
       setGenerationState({ type: 'chords', isLoading: false, error: `Generation failed: ${errorMessage}` });
     } finally {
-      if (generationState.type === 'chords') setGenerationState({ type: null, isLoading: false, error: null });
+      // Correctly reset the state regardless of the previous state type
+      setGenerationState({ type: null, isLoading: false, error: null });
     }
   };
   
