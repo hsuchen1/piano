@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
@@ -16,7 +17,7 @@ import {
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
   ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
 } from '../constants';
-import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils';
+import { getChordNotes, getBassNotesForPattern } from '../utils';
 import type { ChordWithIndex } from '../App';
 import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
@@ -94,6 +95,7 @@ export const useAudio = (
   const userPianoVolumeNode = useRef<Tone.Volume | null>(null);
   
   const accompanimentSynths = useRef<Map<string, AccompanimentSynthMapEntry>>(new Map());
+  const accompanimentSequence = useRef<Tone.Sequence<ChordWithIndex> | null>(null);
 
   const drumSynths = useRef<Partial<Record<DrumInstrument, Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth>>>({});
   const drumVolumeNode = useRef<Tone.Volume | null>(null);
@@ -395,7 +397,7 @@ export const useAudio = (
       }
       if (!bassSynth.current || (bassSynth.current as any).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
 
-      // BPM Visualizer Loop - CRITICAL: This must not be cancelled accidentally.
+      // BPM Visualizer Loop
       if (!beatVisualizerLoop.current) {
         beatVisualizerLoop.current = new ToneRef.Loop(time => {
             ToneRef.Draw.schedule(() => {
@@ -425,22 +427,18 @@ export const useAudio = (
     }, startTime + durationInSeconds);
   }, [setAccompanimentNotes]);
 
-  // REVISED stopAccompaniment: Clean and simple.
+  // REVISED stopAccompaniment: Forceful and immediate.
   const stopAccompaniment = useCallback(() => {
     if (!ToneRef) return;
     setIsAccompanimentPlaying(false);
     setCurrentlyPlayingChordIndex(null);
 
-    // Setting isAccompanimentPlaying to false triggers the useEffect cleanup,
-    // which now correctly handles stopping the transport and sequence.
-    // We can still stop it here for immediate visual feedback.
-    if (ToneRef.Transport.state === 'started') {
-        ToneRef.Transport.stop();
-    }
+    // Immediate stop for responsiveness.
+    ToneRef.Transport.stop();
+    ToneRef.Transport.cancel();
     
     setAccompanimentNotes(new Set());
 
-    // Release any synth notes that might be "stuck"
     accompanimentSynths.current.forEach(entry => {
         entry.synth.releaseAll();
     });
@@ -453,7 +451,7 @@ export const useAudio = (
     }
   }, [setCurrentlyPlayingChordIndex, setAccompanimentNotes]);
 
-  // REVISED startAccompaniment: Just sets the state to trigger the effect.
+  // REVISED startAccompaniment: Cleaner, just sets the state to trigger the effect.
   const startAccompaniment = useCallback(async () => {
     if (!ToneRef) return;
     const ready = isAudioReady ? true : await initializeAudio();
@@ -462,23 +460,16 @@ export const useAudio = (
     setIsAccompanimentPlaying(true);
   }, [isAudioReady, initializeAudio, internalChordProgression.length]);
 
-  // REVISED Main Accompaniment Sequence useEffect: Centralized and corrected logic.
+  // REVISED Main Accompaniment Sequence useEffect: Centralized logic.
   useEffect(() => {
-    // The cleanup function from the PREVIOUS render handles stopping.
-    // This effect body should only worry about what to do in the CURRENT state.
-
+    // If we are not supposed to be playing, do nothing. The `stopAccompaniment` function handles cleanup.
     if (!isAccompanimentPlaying || !isAudioReady || !ToneRef || internalChordProgression.length === 0) {
-        // If we are not supposed to be playing, ensure the transport is stopped.
-        // This is a safeguard, as `stopAccompaniment` or the cleanup function should have already handled it.
-        if (ToneRef && ToneRef.Transport.state === 'started') {
-            ToneRef.Transport.stop();
-        }
         return;
     }
 
-    // --- At this point, we are definitely supposed to be playing. ---
+    // --- At this point, we are supposed to be playing. ---
 
-    // 1. Create the new music sequence.
+    // 1. Create the sequence based on current data.
     const newSequence = new ToneRef.Sequence<ChordWithIndex>(
       (scheduledTimeInSeconds, chordDef) => {
         ToneRef.Draw.schedule(() => {
@@ -579,6 +570,12 @@ export const useAudio = (
     
     // 2. Configure and start playback.
     newSequence.loop = true;
+    accompanimentSequence.current = newSequence;
+
+    // Ensure transport is stopped before starting to avoid time errors.
+    ToneRef.Transport.stop(); 
+    ToneRef.Transport.cancel();
+
     newSequence.start(0);
     ToneRef.Transport.start(ToneRef.now() + 0.1);
 
@@ -586,17 +583,20 @@ export const useAudio = (
     return () => {
         if (ToneRef.Transport.state === 'started') {
             ToneRef.Transport.stop();
+            ToneRef.Transport.cancel();
         }
-        // Dispose ONLY the sequence we created in this effect run.
-        // This is the surgical fix: it leaves the beatVisualizerLoop intact.
-        newSequence.dispose();
+        if (newSequence) {
+            newSequence.dispose();
+        }
+        if (accompanimentSequence.current) {
+            accompanimentSequence.current.dispose();
+            accompanimentSequence.current = null;
+        }
     };
   }, [
       isAccompanimentPlaying, // The main state trigger
-      internalChordProgression, // Re-triggers when chords change
-      isAudioReady, // Ensures Tone is ready
-      setCurrentlyPlayingChordIndex, // Stable callback
-      scheduleNoteHighlight // Stable callback
+      internalChordProgression, isAudioReady, // Data triggers
+      setCurrentlyPlayingChordIndex, scheduleNoteHighlight // Function dependencies for callback
   ]);
 
   const attackPianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
@@ -685,10 +685,7 @@ export const useAudio = (
 
       if(globalReverb.current && !globalReverb.current.disposed) globalReverb.current.dispose();
       if(globalDelay.current && !globalDelay.current.disposed) globalDelay.current.dispose();
-      if(beatVisualizerLoop.current && !(beatVisualizerLoop.current as any).disposed) {
-        beatVisualizerLoop.current.dispose();
-        beatVisualizerLoop.current = null;
-      }
+      if(beatVisualizerLoop.current && !(beatVisualizerLoop.current as any).disposed) beatVisualizerLoop.current.dispose();
 
       if (drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.dispose();
       (Object.values(drumSynths.current) as (Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth)[])
@@ -696,12 +693,7 @@ export const useAudio = (
         .forEach(synth => synth.dispose());
       if (bassSynth.current && !(bassSynth.current as any).disposed) bassSynth.current.dispose();
       if (bassVolumeNode.current && !bassVolumeNode.current.disposed) bassVolumeNode.current.dispose();
-      
-      // Since the main useEffect now manages its own sequence, we don't need to clean it here.
-      // However, a final cancel on unmount is good practice.
-      if (ToneRef) {
-        ToneRef.Transport.cancel();
-      }
+      if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.clear(); accompanimentSequence.current.dispose(); }
       activePianoNotesByKey.current.clear();
     };
   }, []);

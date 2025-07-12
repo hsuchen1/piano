@@ -23,7 +23,7 @@ import {
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
   createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER
 } from './constants';
-import { isChordType, normalizeNoteName } from './utils/audioUtils';
+import { isChordType, normalizeNoteName } from './utils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
