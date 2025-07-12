@@ -119,7 +119,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                   <strong>第二步：生成和弦</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                       <ListItem>找到「AI 智慧創作」面板。</ListItem>
-                      <ListItem>在輸入框中用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</li >
+                      <ListItem>在輸入框中用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</ListItem>
                       <ListItem>您可以選擇性地從下拉選單中指定希望生成的和弦數量。</ListItem>
                       <ListItem>點擊「生成和弦進行」按鈕。AI 生成的和弦將會取代您目前編輯的內容。</ListItem>
                   </ul>
