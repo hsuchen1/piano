@@ -16,14 +16,14 @@ import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
   SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer
-} from '../types';
+} from './types';
 import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
   createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS
-} from '../constants';
-import { isChordType, normalizeNoteName } from './utils';
+} from './constants';
+import { isChordType, normalizeNoteName } from './utils/audioUtils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
@@ -50,6 +50,8 @@ const App: React.FC = () => {
   const [drumVolume, setDrumVolume] = useState<number>(DEFAULT_DRUM_VOLUME);
   const [drumPattern, setDrumPattern] = useState<DrumPattern>(DEFAULT_DRUM_PATTERN);
   const [customDrumData, setCustomDrumData] = useState<CustomDrumProgressionData>([]);
+  const [drumPatternClipboard, setDrumPatternClipboard] = useState<{ pattern: CustomDrumChordPattern, sourceIndex: number } | null>(null);
+
 
   // Bass State
   const [bassEnabled, setBassEnabled] = useState<boolean>(DEFAULT_BASS_ENABLED);
@@ -240,6 +242,7 @@ const App: React.FC = () => {
     setChordProgression([]);
     setCustomRhythms({});
     setCustomDrumData([]);
+    setDrumPatternClipboard(null);
   }, [audio, handleStopAccompaniment]);
 
   const handleUpdateChordInversion = useCallback((idToUpdate: string, inversion: number) => {
@@ -417,7 +420,7 @@ const App: React.FC = () => {
       setBassVolume(savedEntry.bassVolume === undefined ? DEFAULT_BASS_VOLUME : savedEntry.bassVolume);
       setBassPattern(savedEntry.bassPattern === undefined ? DEFAULT_BASS_PATTERN : savedEntry.bassPattern);
       setBassInstrument(savedEntry.bassInstrument === undefined ? DEFAULT_BASS_INSTRUMENT : savedEntry.bassInstrument);
-      
+      setDrumPatternClipboard(null);
       alert(`和弦進行 "${name}" 已載入！`);
     } else {
       alert(`無法載入和弦進行 "${name}"。`);
@@ -590,7 +593,7 @@ const App: React.FC = () => {
       }
   };
 
-  const handleSetCustomDrumPatternForChord = useCallback((chordOriginalIndex: number, newPattern: any) => {
+  const handleSetCustomDrumPatternForChord = useCallback((chordOriginalIndex: number, newPattern: CustomDrumChordPattern) => {
     setCustomDrumData(prevData => {
       const newData = [...prevData];
       const validatedPattern = createDefaultCustomDrumChordPattern();
@@ -603,6 +606,27 @@ const App: React.FC = () => {
       return newData;
     });
   }, []);
+
+  const handleCopyDrumPattern = useCallback((chordOriginalIndex: number) => {
+    setDrumPatternClipboard(prev => {
+      // If clicking the same copied chord again, clear clipboard
+      if (prev && prev.sourceIndex === chordOriginalIndex) {
+        return null;
+      }
+      // Otherwise, copy the new pattern
+      const patternToCopy = customDrumData[chordOriginalIndex];
+      if (patternToCopy) {
+        return { pattern: patternToCopy, sourceIndex: chordOriginalIndex };
+      }
+      return null;
+    });
+  }, [customDrumData]);
+
+  const handlePasteDrumPattern = useCallback((chordOriginalIndex: number) => {
+    if (drumPatternClipboard) {
+      handleSetCustomDrumPatternForChord(chordOriginalIndex, drumPatternClipboard.pattern);
+    }
+  }, [drumPatternClipboard, handleSetCustomDrumPatternForChord]);
 
   const handleGenerateDrumPattern = async (prompt: string, chordOriginalIndex: number) => {
     if (generationState.isLoading) return;
@@ -634,7 +658,7 @@ const App: React.FC = () => {
             }
         });
 
-        const newPattern = JSON.parse(response.text);
+        const newPattern = JSON.parse(response.text) as CustomDrumChordPattern;
         handleSetCustomDrumPatternForChord(chordOriginalIndex, newPattern);
 
     } catch(error) {
@@ -839,6 +863,9 @@ const App: React.FC = () => {
                 customDrumData={customDrumData}
                 onUpdateCustomDrumCell={handleUpdateCustomDrumCell}
                 onGenerateDrumPattern={handleGenerateDrumPattern}
+                drumPatternClipboard={drumPatternClipboard}
+                onCopyDrumPattern={handleCopyDrumPattern}
+                onPasteDrumPattern={handlePasteDrumPattern}
                 generationState={generationState}
                 isApiKeySet={!!apiKey}
                 // Bass Props

@@ -65,14 +65,13 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                   <ListItem>中下排 (<code className="bg-gray-800 px-1 rounded">Z, S, X, D...</code>) 對應一個八度。</ListItem>
                   <ListItem>中上排 (<code className="bg-gray-800 px-1 rounded">Q, 2, W, 3...</code>) 對應高一個八度。</ListItem>
-                  <ListItem>詳細鍵盤配置顯示在鋼琴下方。</ListItem>
               </ul>
             </ListItem>
           </ul>
 
           <SectionTitle>2. 核心設定</SectionTitle>
           <ul className="list-disc list-inside space-y-2">
-            <ListItem><strong>移調控制:</strong> 使用 <code className="bg-gray-800 px-1 rounded">+</code> 和 <code className="bg-gray-800 px-1 rounded">-</code> 按鈕來升高或降低所有琴鍵的音高。這讓您能輕鬆地用 C 調的指法彈奏任何調性的音樂。</ListItem>
+            <ListItem><strong>移調控制:</strong> 使用 <code className="bg-gray-800 px-1 rounded">+</code> 和 <code className="bg-gray-800 px-1 rounded">-</code> 按鈕來升高或降低所有琴鍵的音高。</ListItem>
             <ListItem>
               <strong>主鍵盤設定:</strong>
               <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
@@ -84,7 +83,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           </ul>
 
           <SectionTitle>3. 建立您的和弦進行</SectionTitle>
-           <p className="text-gray-300">這是創造伴奏的核心步驟。您有兩種方式可以建立：</p>
+           <p className="text-gray-300">您可以用兩種方式建立伴奏的和弦基礎：</p>
            <ol className="list-decimal list-inside space-y-2">
                 <ListItem><strong>手動新增:</strong> 在「新增和弦至進行」面板中選擇根音與和弦類型，然後點擊「新增和弦」。</ListItem>
                 <ListItem>
@@ -105,7 +104,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
            </ol>
 
           <SectionTitle>4. AI 智慧創作 (Gemini API)</SectionTitle>
-          <p className="text-gray-300">利用 AI 的強大功能，讓它根據您的想法一鍵生成和弦進行！</p>
+          <p className="text-gray-300">利用 AI 的強大功能，加速您的音樂創作流程！</p>
           <ol className="list-decimal list-inside space-y-2 mt-2">
               <ListItem>
                   <strong>第一步：設定 API 金鑰 (僅需一次)</strong>
@@ -116,13 +115,26 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                   </ul>
               </ListItem>
               <ListItem>
-                  <strong>第二步：生成和弦</strong>
+                  <strong>AI 和弦生成:</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
-                      <ListItem>找到「AI 智慧創作」面板。</ListItem>
-                      <ListItem>在輸入框中用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</ListItem>
-                      <ListItem>您可以選擇性地從下拉選單中指定希望生成的和弦數量。</ListItem>
-                      <ListItem>點擊「生成和弦進行」按鈕。AI 生成的和弦將會取代您目前編輯的內容。</ListItem>
+                      <ListItem>在「AI 智慧創作」面板中，用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</ListItem>
+                      <ListItem>點擊「生成和弦進行」。AI 將會**取代**您目前編輯的內容。</ListItem>
                   </ul>
+              </ListItem>
+              <ListItem>
+                  <strong>AI 風格轉換:</strong>
+                  <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
+                      <ListItem>在「和弦進行」面板中，點擊「AI 風格轉換」按鈕。</ListItem>
+                      <ListItem>輸入您想要的新風格（例如：「爵士」、「8-bit 遊戲音樂」），AI 將會重新詮釋您現有的和弦進行。</ListItem>
+                  </ul>
+              </ListItem>
+              <ListItem>
+                  <strong>AI 鼓組生成:</strong>
+                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
+                       <ListItem>在「鼓組」分頁中，將風格設為「自訂」。</ListItem>
+                       <ListItem>在自訂鼓組編輯器中，點擊任一個和弦右上角的「AI」按鈕。</ListItem>
+                       <ListItem>描述您想要的鼓點（例如：「一個簡單的搖滾鼓點」），AI 就會為該小節自動填上鼓點。</ListItem>
+                   </ul>
               </ListItem>
           </ol>
 
@@ -148,6 +160,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                       <ListItem>點擊「啟用鼓組」來開啟/關閉鼓。</ListItem>
                       <ListItem>可以調整鼓的<strong>音量</strong>和選擇預設的<strong>鼓組風格</strong> (如搖滾、拉丁)。</ListItem>
                       <ListItem>選擇「自訂」風格後，會出現詳細的編輯器，讓您為每個和弦的每一拍的 4 個分拍點擊設定鼓點。</ListItem>
+                      <ListItem><strong>新功能！</strong>在自訂模式中，您可以使用「複製」按鈕複製一個小節的鼓點，再到另一個小節點擊「貼上」，快速應用相同節奏。</ListItem>
                   </ul>
               </li>
               <li><strong>貝斯 (Bass) 分頁:</strong>

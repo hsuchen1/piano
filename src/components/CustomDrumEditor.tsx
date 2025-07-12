@@ -15,6 +15,9 @@ interface CustomDrumEditorProps {
     isActive: boolean
   ) => void;
   onGenerateDrumPattern: (prompt: string, chordOriginalIndex: number) => void;
+  drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
+  onCopy: (chordOriginalIndex: number) => void;
+  onPaste: (chordOriginalIndex: number) => void;
   generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
   isApiKeySet: boolean;
 }
@@ -24,6 +27,9 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
   customDrumData,
   onUpdateCell,
   onGenerateDrumPattern,
+  drumPatternClipboard,
+  onCopy,
+  onPaste,
   generationState,
   isApiKeySet,
 }) => {
@@ -41,6 +47,7 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
   const handleGenerateClick = () => {
     if (aiPrompt.trim() && editingAiForChordIndex !== null) {
       onGenerateDrumPattern(aiPrompt, editingAiForChordIndex);
+      setEditingAiForChordIndex(null);
     }
   };
   
@@ -75,6 +82,8 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
         {chordProgression.map((chordItem, chordIdx) => {
           const currentChordDrumPattern = customDrumData[chordItem.originalIndex] || createDefaultCustomDrumChordPattern();
           const isCurrentlyGenerating = isGeneratingDrums && generationState.drumChordIndex === chordItem.originalIndex;
+          const isCopied = drumPatternClipboard?.sourceIndex === chordItem.originalIndex;
+          const canPaste = drumPatternClipboard !== null && !isCopied;
 
           return (
             <div key={chordItem.id} className="p-2.5 bg-gray-500 rounded shadow-sm space-y-1.5 relative">
@@ -87,14 +96,33 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
                 <h5 className="text-xs font-mono text-gray-200">
                   <span className="font-semibold">{chordIdx + 1}. {chordItem.root}{chordItem.type}</span>
                 </h5>
-                <button
-                  onClick={() => { setAiPrompt(''); setEditingAiForChordIndex(chordItem.originalIndex); }}
-                  disabled={!canPerformAiAction || isGeneratingDrums}
-                  className="px-2 py-0.5 text-xs bg-red-600 hover:bg-red-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
-                  title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 生成此鼓點"}
-                >
-                  AI
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => onCopy(chordItem.originalIndex)}
+                    className={`px-2 py-0.5 text-xs rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed
+                      ${isCopied ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'}`}
+                    title={isCopied ? "取消複製" : "複製此鼓點"}
+                  >
+                    {isCopied ? '已複製' : '複製'}
+                  </button>
+                  {canPaste && (
+                     <button
+                      onClick={() => onPaste(chordItem.originalIndex)}
+                      className="px-2 py-0.5 text-xs bg-green-600 hover:bg-green-700 rounded text-white transition-colors"
+                      title="貼上已複製的鼓點"
+                    >
+                      貼上
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setAiPrompt(''); setEditingAiForChordIndex(chordItem.originalIndex); }}
+                    disabled={!canPerformAiAction || isGeneratingDrums}
+                    className="px-2 py-0.5 text-xs bg-red-600 hover:bg-red-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                    title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 生成此鼓點"}
+                  >
+                    AI
+                  </button>
+                </div>
               </div>
               
               {DRUM_INSTRUMENT_OPTIONS.map(drumOpt => {
