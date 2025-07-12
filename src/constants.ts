@@ -41,6 +41,18 @@ export const CHORD_INTERVALS: Record<ChordType, number[]> = {
   [ChordType.Major7th]: [0, 4, 7, 11],
   [ChordType.Diminished7th]: [0, 3, 6, 9],
   [ChordType.Minor7thFlat5]: [0, 3, 6, 10],
+  // New intervals
+  [ChordType.Suspended2]: [0, 2, 7],
+  [ChordType.Suspended4]: [0, 5, 7],
+  [ChordType.Major9]: [0, 4, 7, 11, 14],
+  [ChordType.Minor9]: [0, 3, 7, 10, 14],
+  [ChordType.Dominant9]: [0, 4, 7, 10, 14],
+  [ChordType.Major6]: [0, 4, 7, 9],
+  [ChordType.Minor6]: [0, 3, 7, 9],
+  [ChordType.Augmented]: [0, 4, 8],
+  [ChordType.PowerChord]: [0, 7],
+  [ChordType.Dominant7sharp9]: [0, 4, 7, 10, 15],
+  [ChordType.Dominant7flat9]: [0, 4, 7, 10, 13],
 };
 
 export const DEFAULT_TRANSPOSE_SEMITONES = 0;
