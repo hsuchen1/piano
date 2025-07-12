@@ -1,3 +1,4 @@
+
 import React, { useState, memo } from 'react';
 import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, CustomDrumChordPattern } from '../types';
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
@@ -43,6 +44,9 @@ interface AccompanimentControlsProps {
   customDrumData: CustomDrumProgressionData;
   onUpdateCustomDrumCell: (chordOriginalIndex: number, instrument: DrumInstrument, beatIndex: number, subdivisionIndex: number, isActive: boolean) => void;
   onGenerateDrumPattern: (prompt: string, chordOriginalIndex: number) => void;
+  drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
+  onCopyDrumPattern: (chordOriginalIndex: number) => void;
+  onPasteDrumPattern: (chordOriginalIndex: number) => void;
   generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
   isApiKeySet: boolean;
 
@@ -136,11 +140,14 @@ interface DrumKitPanelProps {
     customDrumData: CustomDrumProgressionData;
     onUpdateCustomDrumCell: (chordOriginalIndex: number, instrument: DrumInstrument, beatIndex: number, subdivisionIndex: number, isActive: boolean) => void;
     onGenerateDrumPattern: (prompt: string, chordOriginalIndex: number) => void;
+    drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
+    onCopyDrumPattern: (chordOriginalIndex: number) => void;
+    onPasteDrumPattern: (chordOriginalIndex: number) => void;
     generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
     isApiKeySet: boolean;
 }
 
-const DrumKitPanel: React.FC<DrumKitPanelProps> = memo(({ drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange, chordProgressionForCustomEditor, customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, generationState, isApiKeySet }) => (
+const DrumKitPanel: React.FC<DrumKitPanelProps> = memo(({ drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange, chordProgressionForCustomEditor, customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, drumPatternClipboard, onCopyDrumPattern, onPasteDrumPattern, generationState, isApiKeySet }) => (
   <div className="space-y-3">
     <div className="flex items-center justify-between">
       <label htmlFor="drumsEnabled" className="text-sm font-medium text-gray-300">啟用鼓組 (Enable Drums)</label>
@@ -165,6 +172,9 @@ const DrumKitPanel: React.FC<DrumKitPanelProps> = memo(({ drumsEnabled, onDrumsE
             customDrumData={customDrumData}
             onUpdateCell={onUpdateCustomDrumCell}
             onGenerateDrumPattern={onGenerateDrumPattern}
+            drumPatternClipboard={drumPatternClipboard}
+            onCopy={onCopyDrumPattern}
+            onPaste={onPasteDrumPattern}
             generationState={generationState}
             isApiKeySet={isApiKeySet}
         />
@@ -252,7 +262,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
     chordProgressionForCustomEditor, customRhythms, onUpdateCustomBeat,
     reverbLevel, onReverbLevelChange, delayLevel, onDelayLevelChange, swing, onSwingChange,
     drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange,
-    customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, generationState, isApiKeySet,
+    customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, drumPatternClipboard, onCopyDrumPattern, onPasteDrumPattern, generationState, isApiKeySet,
     bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassPattern, onBassPatternChange,
     bassInstrument, onBassInstrumentChange
   } = props;
@@ -322,6 +332,9 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
             customDrumData={customDrumData}
             onUpdateCustomDrumCell={onUpdateCustomDrumCell}
             onGenerateDrumPattern={onGenerateDrumPattern}
+            drumPatternClipboard={drumPatternClipboard}
+            onCopyDrumPattern={onCopyDrumPattern}
+            onPasteDrumPattern={onPasteDrumPattern}
             generationState={generationState}
             isApiKeySet={isApiKeySet}
         />}
