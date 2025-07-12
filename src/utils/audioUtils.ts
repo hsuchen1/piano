@@ -1,7 +1,7 @@
 
 import * as Tone from 'tone';
 import { NoteName, ChordType, ChordDefinition, BassPattern } from '../types';
-import { CHORD_INTERVALS } from '../constants';
+import { CHORD_INTERVALS, NOTE_NAMES_SHARP, NOTE_NAMES_FLAT } from '../constants';
 import { getNoteFullName } from '../constants';
 
 const ToneRef = Tone;
@@ -102,4 +102,39 @@ export const getBassNotesForPattern = (
     default:
       return [{ note: bassNote, timeOffset: "0:0:0", duration: "1m" }];
   }
+};
+
+/**
+ * Checks if a string is a valid ChordType.
+ * @param type The string to validate.
+ * @returns True if the string is a valid ChordType, false otherwise.
+ */
+export const isChordType = (type: string): type is ChordType => {
+  return Object.values(ChordType).includes(type as ChordType);
+};
+
+/**
+ * Normalizes a note name to its sharp equivalent if it's a flat.
+ * @param note The note name (e.g., "Db", "C#", "G").
+ * @returns The normalized NoteName or null if invalid.
+ */
+export const normalizeNoteName = (note: string): NoteName | null => {
+    // Sanitize input to handle potential whitespace and capitalization issues
+  const sanitizedNote = note.trim();
+  const upperNote = sanitizedNote.charAt(0).toUpperCase() + sanitizedNote.slice(1);
+  
+  // Direct match for sharp/natural notes
+  const sharpIndex = NOTE_NAMES_SHARP.indexOf(upperNote as NoteName);
+  if (sharpIndex > -1) {
+    return NOTE_NAMES_SHARP[sharpIndex];
+  }
+
+  // Match for flat notes and convert to sharp equivalent
+  const flatIndex = NOTE_NAMES_FLAT.indexOf(upperNote);
+  if (flatIndex > -1) {
+    return NOTE_NAMES_SHARP[flatIndex]; // Return the sharp equivalent from the same index
+  }
+  
+  console.warn(`[normalizeNoteName] Invalid note name received: "${note}"`);
+  return null;
 };
