@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 
 interface TutorialModalProps {
@@ -83,9 +84,9 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           </ul>
 
           <SectionTitle>3. 建立您的和弦進行</SectionTitle>
-           <p className="text-gray-300">這是創造伴奏的核心步驟。</p>
+           <p className="text-gray-300">這是創造伴奏的核心步驟。您有兩種方式可以建立：</p>
            <ol className="list-decimal list-inside space-y-2">
-                <ListItem><strong>新增和弦:</strong> 在「新增和弦至進行」面板中選擇根音與和弦類型，然後點擊「新增和弦」。</ListItem>
+                <ListItem><strong>手動新增:</strong> 在「新增和弦至進行」面板中選擇根音與和弦類型，然後點擊「新增和弦」。</ListItem>
                 <ListItem>
                   <strong>編輯和弦進行:</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
@@ -103,7 +104,29 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                 </ListItem>
            </ol>
 
-          <SectionTitle>4. 設計您的伴奏</SectionTitle>
+          <SectionTitle>4. AI 智慧創作 (Gemini API)</SectionTitle>
+          <p className="text-gray-300">利用 AI 的強大功能，讓它根據您的想法一鍵生成和弦進行！</p>
+          <ol className="list-decimal list-inside space-y-2 mt-2">
+              <ListItem>
+                  <strong>第一步：設定 API 金鑰 (僅需一次)</strong>
+                  <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
+                      <ListItem>前往「API 金鑰設定」面板。</ListItem>
+                      <ListItem>將您的 Google Gemini API 金鑰貼入輸入框中並點擊「儲存」。</ListItem>
+                      <ListItem><strong>安全提示：</strong>您的金鑰只會被安全地儲存在您自己的瀏覽器中，絕不會上傳或公開。</ListItem>
+                  </ul>
+              </ListItem>
+              <ListItem>
+                  <strong>第二步：生成和弦</strong>
+                  <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
+                      <ListItem>找到「AI 智慧創作」面板。</ListItem>
+                      <ListItem>在輸入框中用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</li >
+                      <ListItem>您可以選擇性地從下拉選單中指定希望生成的和弦數量。</ListItem>
+                      <ListItem>點擊「生成和弦進行」按鈕。AI 生成的和弦將會取代您目前編輯的內容。</ListItem>
+                  </ul>
+              </ListItem>
+          </ol>
+
+          <SectionTitle>5. 設計您的伴奏</SectionTitle>
           <p className="text-gray-300">伴奏控制面板分為四個分頁，讓您精雕細琢您的音樂：</p>
           <ul className="space-y-3">
               <li><strong>主控制 (面板頂部):</strong>

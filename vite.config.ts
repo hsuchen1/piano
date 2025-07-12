@@ -17,6 +17,13 @@ const base = process.env.NODE_ENV === 'production' ? `/${repositoryName}/` : '/'
 
 export default defineConfig({
   base: base,
+  build: {
+    rollupOptions: {
+      external: [
+        '@google/genai' // 將 @google/genai 標記為外部依賴
+      ]
+    }
+  },
   plugins: [
     react(),
     VitePWA({
