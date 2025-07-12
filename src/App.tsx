@@ -1,17 +1,21 @@
 
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
 import ChordSelector from './components/ChordSelector';
 import ChordProgressionEditor from './components/ChordProgressionEditor';
 import AccompanimentControls from './components/AccompanimentControls';
 import SavedProgressions from './components/SavedProgressions';
-import TutorialModal from './components/TutorialModal'; // Import the new component
+import TutorialModal from './components/TutorialModal';
+import GeminiChordGenerator from './components/GeminiChordGenerator';
+import ApiSettings from './components/ApiSettings'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer
+  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, ChordType
 } from './types';
 import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
@@ -19,6 +23,8 @@ import {
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
   createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER
 } from './constants';
+import { isChordType, normalizeNoteName } from './utils/audioUtils';
+
 
 export interface ChordWithIndex extends ChordDefinition {
   originalIndex: number;
@@ -50,6 +56,11 @@ const App: React.FC = () => {
   const [bassVolume, setBassVolume] = useState<number>(DEFAULT_BASS_VOLUME);
   const [bassPattern, setBassPattern] = useState<BassPattern>(DEFAULT_BASS_PATTERN);
   const [bassInstrument, setBassInstrument] = useState<BassInstrument>(DEFAULT_BASS_INSTRUMENT);
+
+  // API Key and AI Generation State
+  const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem('gemini_api_key'));
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   // New state for playback highlighting and effects
   const [currentlyPlayingChordIndex, setCurrentlyPlayingChordIndex] = useState<number | null>(null);
@@ -454,6 +465,102 @@ const App: React.FC = () => {
     audio.releasePianoNote(noteName, octave, isComputerKey);
   }, [audio]);
 
+  const handleApiKeyChange = (key: string | null) => {
+    setApiKey(key);
+  };
+
+  const handleGenerateProgression = async (prompt: string, numChords: string) => {
+    if (isGenerating) return;
+
+    if (!apiKey) {
+      setGenerationError("請先在 API 設定中輸入您的 Gemini API 金鑰。");
+      return;
+    }
+
+    if (chordProgression.length > 0) {
+      const userConfirmed = window.confirm("AI 將會取代您目前的和弦進行。確定要繼續嗎？");
+      if (!userConfirmed) {
+        return;
+      }
+    }
+    
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      
+      const baseInstruction = "你是一位精通樂理的作曲家。你的任務是根據使用者的描述，生成一段常見的和弦進行。你的回答必須是 JSON 格式。";
+      let countInstruction = "和弦進行應包含 4 到 8 個和弦。"; // Default for 'auto'
+      if (numChords !== 'auto') {
+        const count = parseInt(numChords, 10);
+        if (!isNaN(count)) {
+            countInstruction = `和弦進行必須正好包含 ${count} 個和弦。`;
+        }
+      }
+      const finalSystemInstruction = `${baseInstruction} ${countInstruction}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `使用者的請求是: '${prompt}'`,
+        config: {
+          systemInstruction: finalSystemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                root: { type: Type.STRING, description: "和弦的根音，例如 'C', 'G#', 'Bb'" },
+                type: { type: Type.STRING, description: `和弦的類型，必須是 '${Object.values(ChordType).join("', '")}' 中的一種` }
+              },
+              required: ["root", "type"]
+            }
+          }
+        }
+      });
+
+      const jsonText = response.text.trim();
+      const generatedChords = JSON.parse(jsonText);
+
+      if (!Array.isArray(generatedChords)) {
+        throw new Error("AI 回應的格式不正確，不是一個陣列。");
+      }
+      
+      const validatedProgression: ChordDefinition[] = [];
+      for (const item of generatedChords) {
+        const normalizedRoot = normalizeNoteName(item.root);
+        if (!normalizedRoot) {
+          throw new Error(`AI 回傳了無效的和弦根音: ${item.root}`);
+        }
+        if (!isChordType(item.type)) {
+          throw new Error(`AI 回傳了無效的和弦類型: ${item.type}`);
+        }
+        validatedProgression.push({
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          root: normalizedRoot,
+          type: item.type,
+          inversion: 0
+        });
+      }
+
+      if (audio.isAccompanimentPlaying) {
+        handleStopAccompaniment();
+      }
+      setChordProgression(validatedProgression);
+      setCustomRhythms({});
+      setCustomDrumData(Array(validatedProgression.length).fill(null).map(() => createDefaultCustomDrumChordPattern()));
+
+    } catch (error) {
+      console.error("Error generating chord progression:", error);
+      const errorMessage = error instanceof Error ? error.message : "發生未知錯誤";
+      setGenerationError(`生成失敗: ${errorMessage}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -587,6 +694,13 @@ const App: React.FC = () => {
                    </div>
               </div>
               <ChordSelector onAddChord={handleAddChord} />
+              <ApiSettings apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
+              <GeminiChordGenerator 
+                onGenerate={handleGenerateProgression}
+                isGenerating={isGenerating}
+                generationError={generationError}
+                isApiKeySet={!!apiKey}
+              />
               <SavedProgressions
                 savedProgressions={savedProgressions}
                 onLoadProgression={handleLoadProgression}
@@ -648,7 +762,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <footer className="text-center text-gray-500 text-xs sm:text-sm mt-6 sm:mt-8 pb-4">
-            <p>技術支持：React, Tailwind CSS, Tone.js</p>
+            <p>技術支持：React, Tailwind CSS, Tone.js, Gemini API</p>
             <p>&copy; {new Date().getFullYear()} by hsuchen</p>
           </footer>
         </div>
