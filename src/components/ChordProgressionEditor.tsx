@@ -10,6 +10,9 @@ interface ChordProgressionEditorProps {
   onReorderProgression: (sourceIndex: number, destinationIndex: number) => void;
   onUpdateChordInversion: (id: string, inversion: number) => void;
   currentlyPlayingChordIndex: number | null;
+  onStyleTransfer: (prompt: string) => void;
+  isGeneratingStyle: boolean;
+  isApiKeySet: boolean;
 }
 
 // --- Memoized InversionControl Component ---
@@ -61,12 +64,16 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   onSaveProgression,
   onReorderProgression,
   onUpdateChordInversion,
-  currentlyPlayingChordIndex
+  currentlyPlayingChordIndex,
+  onStyleTransfer,
+  isGeneratingStyle,
+  isApiKeySet,
 }) => {
   const draggedItemIndex = useRef<number | null>(null);
   const draggedOverItemIndex = useRef<number | null>(null);
   const [dragIndicatorIndex, setDragIndicatorIndex] = useState<number | null>(null);
-
+  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+  const [stylePrompt, setStylePrompt] = useState('');
 
   const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
     draggedItemIndex.current = index;
@@ -122,11 +129,50 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
     return null;
   };
 
+  const handleStyleSubmit = () => {
+    if (stylePrompt.trim()) {
+      onStyleTransfer(stylePrompt.trim());
+      setIsStyleModalOpen(false);
+    }
+  };
+
+  const canPerformAiAction = isApiKeySet && progression.length > 0;
+
   return (
     <div className="p-4 bg-gray-700 rounded-lg shadow-md h-full flex flex-col">
+      {isStyleModalOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setIsStyleModalOpen(false)}>
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h4 className="text-xl font-bold text-purple-300 mb-3">AI 風格轉換</h4>
+            <p className="text-sm text-gray-400 mb-4">輸入您想要的音樂風格，AI 將會重新詮釋您目前的和弦進行。</p>
+            <textarea
+              rows={3}
+              value={stylePrompt}
+              onChange={(e) => setStylePrompt(e.target.value)}
+              className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
+              placeholder="例如：smooth jazz trio, epic cinematic score, 8-bit video game music..."
+              aria-label="Style prompt"
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button onClick={() => setIsStyleModalOpen(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md transition-colors">取消</button>
+              <button onClick={handleStyleSubmit} disabled={!stylePrompt.trim()} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">轉換</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-100">和弦進行</h3>
         <div className="space-x-2">
+          {progression.length > 0 && (
+             <button
+              onClick={() => setIsStyleModalOpen(true)}
+              disabled={!canPerformAiAction || isGeneratingStyle}
+              className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 轉換風格"}
+            >
+              AI 風格轉換
+            </button>
+          )}
           {progression.length > 0 && (
             <button onClick={onSaveProgression} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white transition-colors" title="儲存目前和弦進行">儲存</button>
           )}
@@ -135,9 +181,12 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
           )}
         </div>
       </div>
+      {isGeneratingStyle && (
+        <div className="text-center p-4 text-purple-300">風格轉換中...</div>
+      )}
       {progression.length === 0 ? (
         <div className="flex-grow flex items-center justify-center">
-          <p className="text-gray-400 text-center">尚未加入任何和弦。<br />請使用選擇器新增和弦以建立伴奏。</p>
+          <p className="text-gray-400 text-center">尚未加入任何和弦。<br />請使用選擇器或 AI 新增和弦以建立伴奏。</p>
         </div>
       ) : (
         <ul 

@@ -16,6 +16,18 @@ export enum ChordType {
   Major7th = "Maj7",
   Diminished7th = "dim7",
   Minor7thFlat5 = "m7b5",
+  // New extended chords
+  Suspended2 = "sus2",
+  Suspended4 = "sus4",
+  Major9 = "Maj9",
+  Minor9 = "m9",
+  Dominant9 = "9",
+  Major6 = "6",
+  Minor6 = "m6",
+  Augmented = "aug",
+  PowerChord = "5",
+  Dominant7sharp9 = "7#9",
+  Dominant7flat9 = "7b9",
 }
 
 export interface ChordDefinition {

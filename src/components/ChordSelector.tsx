@@ -8,6 +8,28 @@ interface ChordSelectorProps {
   onAddChord: (chord: ChordDefinition) => void;
 }
 
+const CHORD_TYPE_DISPLAY_NAMES: Record<ChordType, string> = {
+  [ChordType.Major]: "Major",
+  [ChordType.Minor]: "Minor",
+  [ChordType.Dominant7th]: "Dominant 7th",
+  [ChordType.Minor7th]: "Minor 7th",
+  [ChordType.Major7th]: "Major 7th",
+  [ChordType.Diminished7th]: "Diminished 7th",
+  [ChordType.Minor7thFlat5]: "Minor 7th b5 (ø)",
+  [ChordType.Suspended2]: "Suspended 2nd",
+  [ChordType.Suspended4]: "Suspended 4th",
+  [ChordType.Major9]: "Major 9th",
+  [ChordType.Minor9]: "Minor 9th",
+  [ChordType.Dominant9]: "Dominant 9th",
+  [ChordType.Major6]: "Major 6th",
+  [ChordType.Minor6]: "Minor 6th",
+  [ChordType.Augmented]: "Augmented",
+  [ChordType.PowerChord]: "Power Chord (5)",
+  [ChordType.Dominant7sharp9]: "Dominant 7th #9",
+  [ChordType.Dominant7flat9]: "Dominant 7th b9",
+};
+
+
 const ChordSelector: React.FC<ChordSelectorProps> = ({ onAddChord }) => {
   const [rootNote, setRootNote] = useState<NoteName>("C");
   const [chordType, setChordType] = useState<ChordType>(ChordType.Major);
@@ -45,19 +67,11 @@ const ChordSelector: React.FC<ChordSelectorProps> = ({ onAddChord }) => {
           onChange={(e) => setChordType(e.target.value as ChordType)}
           className="w-full p-2.5 bg-gray-600 border border-gray-500 rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition-colors"
         >
-          {Object.entries(ChordType).map(([key, value]) => {
-            let displayName = key;
-            if (value === ChordType.Minor7thFlat5) displayName = "Minor 7th b5 (ø)";
-            else if (value === ChordType.Diminished7th) displayName = "Diminished 7th";
-            else if (value === ChordType.Major) displayName = "Major";
-            else if (value === ChordType.Minor) displayName = "Minor";
-            else if (value === ChordType.Dominant7th) displayName = "Dominant 7th";
-            else if (value === ChordType.Minor7th) displayName = "Minor 7th";
-            else if (value === ChordType.Major7th) displayName = "Major 7th";
-            return (
-              <option key={value} value={value}>{displayName} ({value})</option>
-            );
-          })}
+          {Object.values(ChordType).map(value => (
+            <option key={value} value={value}>
+              {CHORD_TYPE_DISPLAY_NAMES[value]} ({value})
+            </option>
+          ))}
         </select>
       </div>
       <button
