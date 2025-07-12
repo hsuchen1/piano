@@ -1,4 +1,3 @@
-
 import * as Tone from 'tone';
 import { NoteName, ChordType, ChordDefinition, BassPattern } from '../types';
 import { CHORD_INTERVALS, NOTE_NAMES_SHARP, NOTE_NAMES_FLAT } from '../constants';
@@ -64,13 +63,16 @@ export const getBassNotesForPattern = (
   const thirdNote = invertedChordNotes[1] || bassNote;
   const fifthNote = invertedChordNotes[2] || bassNote;
 
-  // For arpeggios that go up to the octave of the new bass note
-  let octaveNote;
+  // For arpeggios and other patterns
+  let octaveNote: string;
+  let secondNote: string; // Major second above the bass note
   try {
       const bassNoteMidi = ToneRef.Frequency(bassNote).toMidi();
       octaveNote = ToneRef.Frequency(bassNoteMidi + 12, "midi").toNote();
+      secondNote = ToneRef.Frequency(bassNoteMidi + 2, "midi").toNote();
   } catch (e) {
       octaveNote = bassNote; // Fallback
+      secondNote = thirdNote; // Fallback to the third if something goes wrong
   }
 
 
@@ -92,12 +94,28 @@ export const getBassNotesForPattern = (
         { note: octaveNote, timeOffset: "0:3:0", duration: "4n" },
       ];
     case BassPattern.WalkingBassSimple:
-      const sixthNoteInversion = invertedChordNotes[3] || octaveNote; // Simplified
+      // New pattern: Root - Root - 5th - 3rd. More rhythmic and distinct.
       return [
         { note: bassNote, timeOffset: "0:0:0", duration: "4n" },
-        { note: thirdNote, timeOffset: "0:1:0", duration: "4n" },
+        { note: bassNote, timeOffset: "0:1:0", duration: "4n" },
         { note: fifthNote, timeOffset: "0:2:0", duration: "4n" },
-        { note: sixthNoteInversion, timeOffset: "0:3:0", duration: "4n" },
+        { note: thirdNote, timeOffset: "0:3:0", duration: "4n" },
+      ];
+    case BassPattern.WalkingBassMelodic:
+      return [
+        { note: bassNote, timeOffset: "0:0:0", duration: "4n" },
+        { note: secondNote, timeOffset: "0:1:0", duration: "4n" },
+        { note: thirdNote, timeOffset: "0:2:0", duration: "4n" },
+        { note: fifthNote, timeOffset: "0:3:0", duration: "4n" },
+      ];
+    case BassPattern.FunkSlap:
+      return [
+        { note: bassNote, timeOffset: "0:0:0", duration: "16n" },
+        { note: bassNote, timeOffset: "0:1:0", duration: "16n" },
+        { note: octaveNote, timeOffset: "0:1:3", duration: "16n" },
+        { note: bassNote, timeOffset: "0:2:0", duration: "16n" },
+        { note: fifthNote, timeOffset: "0:3:0", duration: "16n" },
+        { note: octaveNote, timeOffset: "0:3:3", duration: "16n" },
       ];
     default:
       return [{ note: bassNote, timeOffset: "0:0:0", duration: "1m" }];
