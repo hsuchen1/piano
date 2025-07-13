@@ -1,5 +1,4 @@
 
-
 import React, { FC } from 'react';
 
 interface TutorialModalProps {
@@ -55,7 +54,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         <main className="p-6 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-600">
           <div>
             <h2 className="text-2xl font-semibold text-purple-300">歡迎來到互動鋼琴工作室！</h2>
-            <p className="text-gray-300 mt-1">這是一個功能強大的網頁工具，讓您不只能彈奏鋼琴，還能創造出豐富的背景伴奏。</p>
+            <p className="text-gray-300 mt-1">釋放您的音樂創意！在這裡，您不僅可以自由彈奏、編曲，更能讓 AI 成為您的智慧編曲夥伴，輕鬆打造專屬伴奏。</p>
           </div>
           
           <SectionTitle>1. 彈奏虛擬鋼琴</SectionTitle>
@@ -123,7 +122,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                   <strong>AI 風格轉換:</strong> 在「和弦進行」面板中，點擊「AI 風格轉換」按鈕。輸入您想要的新風格（例如：「爵士」、「8-bit 遊戲音樂」），AI 將會重新詮釋您現有的和弦進行。
               </ListItem>
               <ListItem>
-                  <strong>AI 智慧轉位:</strong> 在「和弦進行」面板中，點擊「🧠 AI 智慧轉位」按鈕。AI 會自動調整所有和弦的轉位，讓和弦之間的銜接聽起來更流暢、更悅耳。
+                  <strong>AI 智慧轉位:</strong> 在「和弦進行」面板中，點擊「🧠 AI 智慧轉位」按鈕。AI 會分析整個和弦進行，不僅讓最高音的旋律線條更平滑，同時也會維持整體的音高穩定性，避免不自然的八度跳躍，讓編曲聽起來更專業、更悅耳。
               </ListItem>
               <ListItem>
                   <strong>AI 鼓組生成:</strong> 在「鼓組」分頁中將風格設為「自訂」，然後在自訂鼓組編輯器中點擊任一和弦右上角的「AI」按鈕，描述您想要的鼓點即可。

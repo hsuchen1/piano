@@ -632,7 +632,7 @@ const App: React.FC = () => {
             model: "gemini-2.5-flash",
             contents: `Analyze this chord progression and determine the optimal inversion for each chord to ensure smooth voice leading. Progression data: ${JSON.stringify(progressionWithMaxInversions)}`,
             config: {
-                systemInstruction: "You are a music arrangement expert specializing in voice leading. Your task is to analyze a chord progression and assign the optimal inversion for each chord to minimize melodic movement in the top voice. The input provides each chord's name and its maximum possible inversion number. Your response MUST be a JSON array of numbers. The length of your array must be identical to the input progression's length. Each number in your array represents the chosen inversion for the corresponding chord and MUST NOT exceed that chord's 'max_inversion' value.",
+                systemInstruction: "You are a music arrangement expert specializing in voice leading. Your task is to analyze a chord progression and assign the optimal inversion for each chord. Your primary goal is to minimize melodic movement in the top voice. Your secondary goal is to maintain a relatively stable overall pitch range between adjacent chords, avoiding large, unnecessary octave jumps for the entire chord voicing. The input provides each chord's name and its maximum possible inversion number. Your response MUST be a JSON array of numbers. The length of your array must be identical to the input progression's length. Each number in your array represents the chosen inversion for the corresponding chord and MUST NOT exceed that chord's 'max_inversion' value.",
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
@@ -849,7 +849,7 @@ const App: React.FC = () => {
             <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
               互動鋼琴工作室
             </h1>
-            <p className="text-gray-300 mt-2 text-xs sm:text-base">自由彈奏、編曲，並透過多樣樂器與效果，打造您的專屬伴奏。</p>
+            <p className="text-gray-300 mt-2 text-xs sm:text-base">釋放您的音樂創意！在這裡，您不僅可以自由彈奏、編曲，更能讓 AI 成為您的智慧編曲夥伴，輕鬆打造專屬伴奏。</p>
             <button
               onClick={() => setIsTutorialOpen(true)}
               className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800"
