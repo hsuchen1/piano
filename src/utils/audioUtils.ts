@@ -122,6 +122,26 @@ export const getBassNotesForPattern = (
   }
 };
 
+export const getVoicingOptionsForChord = (chord: ChordDefinition, baseOctave: number): { inversion: number; notes: string[] }[] => {
+  const options: { inversion: number; notes: string[] }[] = [];
+  const intervals = CHORD_INTERVALS[chord.type];
+  if (!intervals || !ToneRef) {
+    return [];
+  }
+
+  const maxInversions = intervals.length;
+
+  for (let i = 0; i < maxInversions; i++) {
+    const tempChordDef: ChordDefinition = { ...chord, inversion: i };
+    // We call getChordNotes without transposition for this specific calculation
+    const notes = getChordNotes(tempChordDef, baseOctave, 0); 
+    if (notes.length > 0) {
+      options.push({ inversion: i, notes: notes });
+    }
+  }
+  return options;
+};
+
 /**
  * Checks if a string is a valid ChordType.
  * @param type The string to validate.
