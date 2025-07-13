@@ -1,4 +1,5 @@
 
+
 import React, { FC } from 'react';
 
 interface TutorialModalProps {
@@ -65,6 +66,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                   <ListItem>中下排 (<code className="bg-gray-800 px-1 rounded">Z, S, X, D...</code>) 對應一個八度。</ListItem>
                   <ListItem>中上排 (<code className="bg-gray-800 px-1 rounded">Q, 2, W, 3...</code>) 對應高一個八度。</ListItem>
+                  <ListItem><strong>空白鍵捷徑:</strong> 您也可以隨時按下<code className="bg-gray-800 px-1 rounded">空白鍵</code>來播放或暫停伴奏。</ListItem>
               </ul>
             </ListItem>
           </ul>
@@ -90,7 +92,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                   <strong>編輯和弦進行:</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                     <ListItem><strong>刪除:</strong> 點擊和弦右側的紅色 <code className="bg-red-500 text-white px-1 rounded">X</code> 按鈕。</ListItem>
-                    <ListItem><strong>轉位:</strong> 點擊和弦旁的 <code className="bg-gray-800 px-1 rounded">0, 1, 2</code> 按鈕來切換和弦轉位。</ListItem>
+                    <ListItem><strong>轉位:</strong> 點擊和弦旁的 <code className="bg-gray-800 px-1 rounded">0, 1, 2...</code> 按鈕來切換和弦轉位。按鈕的數量會根據和弦的複雜度（三和弦、七和弦等）自動變化。</ListItem>
                     <ListItem><strong>重新排序:</strong> 按住和弦並拖曳到新的位置即可改變順序。</ListItem>
                   </ul>
                 </ListItem>
@@ -115,26 +117,19 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                   </ul>
               </ListItem>
               <ListItem>
-                  <strong>AI 和弦生成:</strong>
-                  <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
-                      <ListItem>在「AI 智慧創作」面板中，用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」）。</ListItem>
-                      <ListItem>點擊「生成和弦進行」。AI 將會**取代**您目前編輯的內容。</ListItem>
-                  </ul>
+                  <strong>AI 和弦生成:</strong> 在「AI 智慧創作」面板中，用文字描述您想要的音樂風格或情緒（例如：「一首輕快的流行歌」、「悲傷的電影配樂」），然後點擊生成。AI 將會**取代**您目前編輯的內容。
               </ListItem>
               <ListItem>
-                  <strong>AI 風格轉換:</strong>
-                  <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
-                      <ListItem>在「和弦進行」面板中，點擊「AI 風格轉換」按鈕。</ListItem>
-                      <ListItem>輸入您想要的新風格（例如：「爵士」、「8-bit 遊戲音樂」），AI 將會重新詮釋您現有的和弦進行。</ListItem>
-                  </ul>
+                  <strong>AI 風格轉換:</strong> 在「和弦進行」面板中，點擊「AI 風格轉換」按鈕。輸入您想要的新風格（例如：「爵士」、「8-bit 遊戲音樂」），AI 將會重新詮釋您現有的和弦進行。
               </ListItem>
               <ListItem>
-                  <strong>AI 鼓組生成:</strong>
-                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
-                       <ListItem>在「鼓組」分頁中，將風格設為「自訂」。</ListItem>
-                       <ListItem>在自訂鼓組編輯器中，點擊任一個和弦右上角的「AI」按鈕。</ListItem>
-                       <ListItem>描述您想要的鼓點（例如：「一個簡單的搖滾鼓點」），AI 就會為該小節自動填上鼓點。</ListItem>
-                   </ul>
+                  <strong>AI 智慧轉位:</strong> 在「和弦進行」面板中，點擊「🧠 AI 智慧轉位」按鈕。AI 會自動調整所有和弦的轉位，讓和弦之間的銜接聽起來更流暢、更悅耳。
+              </ListItem>
+              <ListItem>
+                  <strong>AI 鼓組生成:</strong> 在「鼓組」分頁中將風格設為「自訂」，然後在自訂鼓組編輯器中點擊任一和弦右上角的「AI」按鈕，描述您想要的鼓點即可。
+              </ListItem>
+               <ListItem>
+                  <strong>AI 貝斯線生成:</strong> 在「貝斯」分頁中將風格設為「🤖 AI 生成貝斯線」，然後點擊「✨ 生成 AI 貝斯線」按鈕。描述您想要的風格，AI 就會為您的整個和弦進行創作一段完整的貝斯線。
               </ListItem>
           </ol>
 
@@ -144,7 +139,6 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               <li><strong>主控制 (面板頂部):</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                       <ListItem><strong>播放/停止:</strong> 控制伴奏的啟動與停止。</ListItem>
-                      <ListItem><strong>空白鍵捷徑:</strong> 您也可以隨時按下<code className="bg-gray-800 px-1 rounded">空白鍵</code>來播放或暫停伴奏。</ListItem>
                       <ListItem><strong>速度 (BPM):</strong> 拖動滑桿調整伴奏的快慢。左側的紫色圓點會跟隨節拍閃爍。</ListItem>
                   </ul>
               </li>
@@ -161,7 +155,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                       <ListItem>點擊「啟用鼓組」來開啟/關閉鼓。</ListItem>
                       <ListItem>可以調整鼓的<strong>音量</strong>和選擇預設的<strong>鼓組風格</strong> (如搖滾、拉丁)。</ListItem>
                       <ListItem>選擇「自訂」風格後，會出現詳細的編輯器，讓您為每個和弦的每一拍的 4 個分拍點擊設定鼓點。</ListItem>
-                      <ListItem><strong>新功能！</strong>在自訂模式中，您可以使用「複製」按鈕複製一個小節的鼓點，再到另一個小節點擊「貼上」，快速應用相同節奏。</ListItem>
+                      <ListItem>在自訂模式中，您可以使用「複製」按鈕複製一個小節的鼓點，再到另一個小節點擊「貼上」，快速應用相同節奏。</ListItem>
                   </ul>
               </li>
               <li><strong>貝斯 (Bass) 分頁:</strong>

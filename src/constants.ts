@@ -219,6 +219,7 @@ export const BASS_PATTERN_OPTIONS: { value: BassPattern; label: string }[] = [
     { value: BassPattern.WalkingBassSimple, label: "簡易行走貝斯 (Simple Walking Bass)" },
     { value: BassPattern.WalkingBassMelodic, label: "旋律行走貝斯 (Melodic Walking Bass)" },
     { value: BassPattern.FunkSlap, label: "放克貝斯線 (Funk Slap)" },
+    { value: BassPattern.AiGenerated, label: "🤖 AI 生成貝斯線 (AI Generated)" },
 ];
 
 export const BASS_SYNTH_CONFIGS: Record<Exclude<BassInstrument, BassInstrument.PopPulseBass>, any> = {

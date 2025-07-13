@@ -8,6 +8,12 @@ export interface PianoKeyData {
   fullName: string; // e.g., C4, C#4
 }
 
+export type AiNoteEvent = {
+  note: string;
+  time: string; // Tone.js time format "M:B:S"
+  duration: string; // Tone.js time format "4n", "8n", etc.
+};
+
 export enum ChordType {
   Major = "Maj",
   Minor = "min",
@@ -34,7 +40,7 @@ export interface ChordDefinition {
   id: string; // Unique ID for list rendering
   root: NoteName;
   type: ChordType;
-  inversion: number; // 0: root, 1: 1st, 2: 2nd
+  inversion: number; // 0: root, 1: 1st, 2: 2nd, etc.
 }
 
 export enum AccompanimentInstrument {
@@ -129,6 +135,7 @@ export enum BassPattern {
   WalkingBassSimple = "WalkingBassSimple", // Simplified walking bass
   WalkingBassMelodic = "WalkingBassMelodic",
   FunkSlap = "FunkSlap",
+  AiGenerated = "AiGenerated",
 }
 
 export interface SavedProgressionEntry {
@@ -145,6 +152,7 @@ export interface SavedProgressionEntry {
   bassVolume?: number;
   bassPattern?: BassPattern;
   bassInstrument?: BassInstrument;
+  aiBassEvents?: AiNoteEvent[];
   
   // New custom rhythms structure
   customRhythms?: Record<string, BeatDuration[][]>;

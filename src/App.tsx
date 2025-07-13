@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -15,13 +16,13 @@ import ApiSettings from './components/ApiSettings'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer
+  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent
 } from './types';
 import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS
+  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS
 } from './constants';
 import { isChordType, normalizeNoteName } from './utils/audioUtils';
 
@@ -58,11 +59,12 @@ const App: React.FC = () => {
   const [bassVolume, setBassVolume] = useState<number>(DEFAULT_BASS_VOLUME);
   const [bassPattern, setBassPattern] = useState<BassPattern>(DEFAULT_BASS_PATTERN);
   const [bassInstrument, setBassInstrument] = useState<BassInstrument>(DEFAULT_BASS_INSTRUMENT);
+  const [aiBassEvents, setAiBassEvents] = useState<AiNoteEvent[] | null>(null);
 
   // API Key and AI Generation State
   const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem('gemini_api_key'));
   const [generationState, setGenerationState] = useState<{
-    type: 'chords' | 'style' | 'drums' | null;
+    type: 'chords' | 'style' | 'drums' | 'voicing' | 'bass' | null;
     isLoading: boolean;
     error: string | null;
     drumChordIndex?: number;
@@ -117,6 +119,7 @@ const App: React.FC = () => {
               bassVolume: entry.bassVolume === undefined ? DEFAULT_BASS_VOLUME : entry.bassVolume,
               bassPattern: entry.bassPattern === undefined ? DEFAULT_BASS_PATTERN : entry.bassPattern,
               bassInstrument: entry.bassInstrument === undefined ? DEFAULT_BASS_INSTRUMENT : entry.bassInstrument,
+              aiBassEvents: entry.aiBassEvents || null,
             };
           }
         });
@@ -158,6 +161,7 @@ const App: React.FC = () => {
     bassVolume,
     bassPattern,
     bassInstrument,
+    aiBassEvents,
     userPianoVolume,
     setCurrentlyPlayingChordIndex,
     setIsBeat,
@@ -252,6 +256,7 @@ const App: React.FC = () => {
     setCustomRhythms({});
     setCustomDrumData([]);
     setDrumPatternClipboard(null);
+    setAiBassEvents(null);
   }, [audio, handleStopAccompaniment]);
 
   const handleUpdateChordInversion = useCallback((idToUpdate: string, inversion: number) => {
@@ -375,10 +380,11 @@ const App: React.FC = () => {
         bassVolume,
         bassPattern,
         bassInstrument,
+        aiBassEvents,
       }
     }));
     alert(`和弦進行 "${trimmedName}" 已儲存！`);
-  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument]);
+  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument, aiBassEvents]);
 
   const handleLoadProgression = useCallback((name: string) => {
     const savedEntry = savedProgressions[name];
@@ -429,6 +435,7 @@ const App: React.FC = () => {
       setBassVolume(savedEntry.bassVolume === undefined ? DEFAULT_BASS_VOLUME : savedEntry.bassVolume);
       setBassPattern(savedEntry.bassPattern === undefined ? DEFAULT_BASS_PATTERN : savedEntry.bassPattern);
       setBassInstrument(savedEntry.bassInstrument === undefined ? DEFAULT_BASS_INSTRUMENT : savedEntry.bassInstrument);
+      setAiBassEvents(savedEntry.aiBassEvents || null);
       setDrumPatternClipboard(null);
       alert(`和弦進行 "${name}" 已載入！`);
     } else {
@@ -509,6 +516,8 @@ const App: React.FC = () => {
       setChordProgression(validatedProgression);
       setCustomRhythms({});
       setCustomDrumData(Array(validatedProgression.length).fill(null).map(() => createDefaultCustomDrumChordPattern()));
+      setAiBassEvents(null); // Reset AI bass on new progression
+      setBassPattern(DEFAULT_BASS_PATTERN);
   }, [audio, handleStopAccompaniment]);
 
   const handleGenerateProgression = async (prompt: string, numChords: string) => {
@@ -602,6 +611,97 @@ const App: React.FC = () => {
         setGenerationState({ type: null, isLoading: false, error: null });
       }
   };
+
+  const handleSmartVoicing = async () => {
+    if (generationState.isLoading || chordProgression.length < 2) return;
+    if (!apiKey) {
+        alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
+        return;
+    }
+    if (!window.confirm("這將會由 AI 自動調整您所有和弦的轉位以獲得更流暢的聲音。確定要繼續嗎？")) return;
+
+    setGenerationState({ type: 'voicing', isLoading: true, error: null });
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const progressionWithMaxInversions = chordProgression.map(chord => ({
+            chord_name: `${chord.root}${chord.type}`,
+            max_inversion: (CHORD_INTERVALS[chord.type]?.length || 1) - 1,
+        }));
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Analyze this chord progression and determine the optimal inversion for each chord to ensure smooth voice leading. Progression data: ${JSON.stringify(progressionWithMaxInversions)}`,
+            config: {
+                systemInstruction: "You are a music arrangement expert specializing in voice leading. Your task is to analyze a chord progression and assign the optimal inversion for each chord to minimize melodic movement in the top voice. The input provides each chord's name and its maximum possible inversion number. Your response MUST be a JSON array of numbers. The length of your array must be identical to the input progression's length. Each number in your array represents the chosen inversion for the corresponding chord and MUST NOT exceed that chord's 'max_inversion' value.",
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.INTEGER }
+                }
+            }
+        });
+        const newInversions = JSON.parse(response.text);
+        if (newInversions.length !== chordProgression.length) {
+            throw new Error(`AI returned ${newInversions.length} inversions, but expected ${chordProgression.length}.`);
+        }
+        setChordProgression(prev => prev.map((chord, index) => ({
+            ...chord,
+            inversion: newInversions[index]
+        })));
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        console.error("Error with Smart Voicing:", error);
+        alert(`AI 智慧轉位失敗: ${errorMessage}`);
+    } finally {
+        setGenerationState({ type: null, isLoading: false, error: null });
+    }
+  };
+
+  const handleGenerateAIBassline = async (prompt: string) => {
+    if (generationState.isLoading || chordProgression.length === 0) return;
+    if (!apiKey) {
+      alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
+      return;
+    }
+    setGenerationState({ type: 'bass', isLoading: true, error: null });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const currentProgressionStr = chordProgression.map(c => `${c.root}${c.type}`).join(', ');
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Create a bassline for the chord progression [${currentProgressionStr}]. The user wants a style described as: "${prompt}".`,
+            config: {
+                systemInstruction: `You are a professional bass player. Your task is to create a monophonic bassline for a given chord progression. The bassline should be musically interesting, fit the user's description, and stay within a typical bass range (E1 to G3). The response MUST be a JSON array of note events. Each event is an object with "note" (e.g., "C2"), "time" (in "measure:beat:subdivision" format, e.g., "0:0:0"), and "duration" (e.g., "4n", "8n."). The total duration should match the progression length (${chordProgression.length} measures).`,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            note: { type: Type.STRING, description: "The note to play, e.g., 'A2'" },
+                            time: { type: Type.STRING, description: 'The absolute time "M:B:S", e.g. "1:2:0"' },
+                            duration: { type: Type.STRING, description: 'The note duration, e.g., "8n"' }
+                        },
+                        required: ["note", "time", "duration"]
+                    }
+                }
+            }
+        });
+        const newBassEvents = JSON.parse(response.text) as AiNoteEvent[];
+        setAiBassEvents(newBassEvents);
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        console.error("Error generating AI bassline:", error);
+        alert(`AI 貝斯線生成失敗: ${errorMessage}`);
+    } finally {
+        setGenerationState({ type: null, isLoading: false, error: null });
+    }
+  };
+
 
   const handleSetCustomDrumPatternForChord = useCallback((chordOriginalIndex: number, newPattern: CustomDrumChordPattern) => {
     setCustomDrumData(prevData => {
@@ -846,6 +946,8 @@ const App: React.FC = () => {
                 onStyleTransfer={handleStyleTransfer}
                 isGeneratingStyle={generationState.isLoading && generationState.type === 'style'}
                 isApiKeySet={!!apiKey}
+                onSmartVoicing={handleSmartVoicing}
+                isGeneratingVoicing={generationState.isLoading && generationState.type === 'voicing'}
               />
               <AccompanimentControls
                 bpm={audio.currentBPM}
@@ -894,6 +996,7 @@ const App: React.FC = () => {
                 onBassPatternChange={setBassPattern}
                 bassInstrument={bassInstrument}
                 onBassInstrumentChange={setBassInstrument}
+                onGenerateAIBassline={handleGenerateAIBassline}
               />
             </div>
           </div>

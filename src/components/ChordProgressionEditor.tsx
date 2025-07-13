@@ -13,10 +13,11 @@ interface ChordProgressionEditorProps {
   onStyleTransfer: (prompt: string) => void;
   isGeneratingStyle: boolean;
   isApiKeySet: boolean;
+  onSmartVoicing: () => void;
+  isGeneratingVoicing: boolean;
 }
 
 // --- Memoized InversionControl Component ---
-// Moved outside ChordProgressionEditor and memoized to prevent re-renders
 interface InversionControlProps {
   chord: ChordDefinition;
   onUpdate: (id: string, inversion: number) => void;
@@ -24,17 +25,16 @@ interface InversionControlProps {
 
 const InversionControl: React.FC<InversionControlProps> = React.memo(({ chord, onUpdate }) => {
   const numNotes = CHORD_INTERVALS[chord.type]?.length || 3;
-  const maxInversions = numNotes - 1;
+  // Cap displayed inversions at a reasonable number (0-4), covering up to 9th chords
+  const maxDisplayableInversions = Math.min(numNotes - 1, 4);
 
   return (
     <div className="flex items-center space-x-1">
       <span className="text-xs text-gray-400 mr-1">轉位:</span>
-      {[0, 1, 2].map(invValue => {
-        const isDisabled = invValue > maxInversions;
+      {Array.from({ length: maxDisplayableInversions + 1 }, (_, i) => i).map(invValue => {
         return (
           <button
             key={invValue}
-            disabled={isDisabled}
             onClick={(e) => {
               e.stopPropagation();
               onUpdate(chord.id, invValue);
@@ -43,7 +43,6 @@ const InversionControl: React.FC<InversionControlProps> = React.memo(({ chord, o
               w-5 h-5 text-xs font-mono rounded-sm transition-colors
               flex items-center justify-center
               ${chord.inversion === invValue ? 'bg-blue-500 text-white' : 'bg-gray-500 hover:bg-gray-400 text-gray-200'}
-              ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
             `}
             aria-label={`設定為第 ${invValue} 轉位`}
           >
@@ -68,6 +67,8 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   onStyleTransfer,
   isGeneratingStyle,
   isApiKeySet,
+  onSmartVoicing,
+  isGeneratingVoicing,
 }) => {
   const draggedItemIndex = useRef<number | null>(null);
   const draggedOverItemIndex = useRef<number | null>(null);
@@ -163,10 +164,20 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-100">和弦進行</h3>
         <div className="space-x-2">
+          {progression.length > 1 && (
+            <button
+              onClick={onSmartVoicing}
+              disabled={!canPerformAiAction || isGeneratingVoicing || isGeneratingStyle}
+              className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 最佳化和弦轉位"}
+            >
+             🧠 AI 智慧轉位
+            </button>
+          )}
           {progression.length > 0 && (
              <button
               onClick={() => setIsStyleModalOpen(true)}
-              disabled={!canPerformAiAction || isGeneratingStyle}
+              disabled={!canPerformAiAction || isGeneratingStyle || isGeneratingVoicing}
               className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
               title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 轉換風格"}
             >
@@ -181,8 +192,10 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
           )}
         </div>
       </div>
-      {isGeneratingStyle && (
-        <div className="text-center p-4 text-purple-300">風格轉換中...</div>
+      {(isGeneratingStyle || isGeneratingVoicing) && (
+        <div className="text-center p-4 text-purple-300">
+          {isGeneratingVoicing ? 'AI 轉位中...' : '風格轉換中...'}
+        </div>
       )}
       {progression.length === 0 ? (
         <div className="flex-grow flex items-center justify-center">

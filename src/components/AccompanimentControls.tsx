@@ -1,4 +1,5 @@
 
+
 import React, { useState, memo } from 'react';
 import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, CustomDrumChordPattern } from '../types';
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
@@ -58,6 +59,7 @@ interface AccompanimentControlsProps {
   onBassPatternChange: (pattern: BassPattern) => void;
   bassInstrument: BassInstrument;
   onBassInstrumentChange: (instrument: BassInstrument) => void;
+  onGenerateAIBassline: (prompt: string) => void;
 }
 
 // --- Memoized TabButton Component ---
@@ -193,36 +195,92 @@ interface BassGuitarPanelProps {
     onBassInstrumentChange: (instrument: BassInstrument) => void;
     bassPattern: BassPattern;
     onBassPatternChange: (pattern: BassPattern) => void;
+    onGenerateAIBassline: (prompt: string) => void;
+    chordProgressionEmpty: boolean;
+    isApiKeySet: boolean;
+    generationState: { type: string | null; isLoading: boolean; error: string | null };
 }
 
-const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassInstrument, onBassInstrumentChange, bassPattern, onBassPatternChange }) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <label htmlFor="bassEnabled" className="text-sm font-medium text-gray-300">啟用貝斯 (Enable Bass)</label>
-       <button id="bassEnabled" onClick={() => onBassEnabledChange(!bassEnabled)} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${bassEnabled ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-400'}`} aria-pressed={bassEnabled}>
-        {bassEnabled ? '已啟用 (ON)' : '已停用 (OFF)'}
-      </button>
-    </div>
-    {bassEnabled && (<>
-      <div>
-        <label htmlFor="bassVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {bassVolume.toFixed(0)} dB</label>
-        <input type="range" id="bassVolume" min={MIN_VOLUME} max={MAX_BASS_VOLUME} step="1" value={bassVolume} onChange={(e) => onBassVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassInstrument, onBassInstrumentChange, bassPattern, onBassPatternChange, onGenerateAIBassline, chordProgressionEmpty, isApiKeySet, generationState }) => {
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  const handleGenerate = () => {
+    if (aiPrompt.trim()) {
+      onGenerateAIBassline(aiPrompt);
+      setIsAiModalOpen(false);
+    }
+  };
+
+  const isGeneratingBass = generationState.isLoading && generationState.type === 'bass';
+  const canPerformAiAction = isApiKeySet && !chordProgressionEmpty;
+  
+  return (
+    <>
+      {isAiModalOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setIsAiModalOpen(false)}>
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h4 className="text-xl font-bold text-yellow-300 mb-3">AI 貝斯線生成</h4>
+            <p className="text-sm text-gray-400 mb-4">輸入您想要的貝斯線風格，AI 將會為您目前的和弦進行創作一段貝斯線。</p>
+            <textarea
+              rows={3}
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500 transition-colors placeholder-gray-500"
+              placeholder="例如：a funky slap bassline, a simple melodic walking bass, a driving rock bass..."
+              aria-label="Bassline style prompt"
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md transition-colors">取消</button>
+              <button onClick={handleGenerate} disabled={!aiPrompt.trim()} className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-md transition-colors disabled:bg-yellow-800 disabled:cursor-not-allowed">生成</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label htmlFor="bassEnabled" className="text-sm font-medium text-gray-300">啟用貝斯 (Enable Bass)</label>
+          <button id="bassEnabled" onClick={() => onBassEnabledChange(!bassEnabled)} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${bassEnabled ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-400'}`} aria-pressed={bassEnabled}>
+            {bassEnabled ? '已啟用 (ON)' : '已停用 (OFF)'}
+          </button>
+        </div>
+        {bassEnabled && (<>
+          <div>
+            <label htmlFor="bassVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {bassVolume.toFixed(0)} dB</label>
+            <input type="range" id="bassVolume" min={MIN_VOLUME} max={MAX_BASS_VOLUME} step="1" value={bassVolume} onChange={(e) => onBassVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+          </div>
+          <div>
+            <label htmlFor="bassInstrument" className="block text-sm font-medium text-gray-300 mb-1">貝斯音色 (Instrument)</label>
+            <select id="bassInstrument" value={bassInstrument} onChange={(e) => onBassInstrumentChange(e.target.value as BassInstrument)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
+              {BASS_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="bassPattern" className="block text-sm font-medium text-gray-300 mb-1">貝斯線風格 (Pattern)</label>
+            <select id="bassPattern" value={bassPattern} onChange={(e) => onBassPatternChange(e.target.value as BassPattern)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
+              {BASS_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+          </div>
+          {bassPattern === BassPattern.AiGenerated && (
+              <div className="p-3 bg-gray-500 rounded-md mt-2">
+                <button
+                  onClick={() => { setAiPrompt(''); setIsAiModalOpen(true); }}
+                  disabled={!canPerformAiAction || isGeneratingBass}
+                  className="w-full py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold rounded-md transition-colors disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  title={!isApiKeySet ? "請先設定 API 金鑰" : (chordProgressionEmpty ? "請先新增和弦" : "")}
+                >
+                  {isGeneratingBass ? '生成中...' : '✨ 生成 AI 貝斯線'}
+                </button>
+                {generationState.type === 'bass' && generationState.error && (
+                  <p className="text-xs text-red-300 text-center mt-2">{generationState.error}</p>
+                )}
+              </div>
+            )}
+        </>)}
       </div>
-      <div>
-        <label htmlFor="bassInstrument" className="block text-sm font-medium text-gray-300 mb-1">貝斯音色 (Instrument)</label>
-        <select id="bassInstrument" value={bassInstrument} onChange={(e) => onBassInstrumentChange(e.target.value as BassInstrument)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
-          {BASS_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="bassPattern" className="block text-sm font-medium text-gray-300 mb-1">貝斯線風格 (Pattern)</label>
-        <select id="bassPattern" value={bassPattern} onChange={(e) => onBassPatternChange(e.target.value as BassPattern)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
-          {BASS_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-      </div>
-    </>)}
-  </div>
-));
+    </>
+  );
+});
 BassGuitarPanel.displayName = 'BassGuitarPanel';
 
 interface EffectsPanelProps {
@@ -264,7 +322,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
     drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange,
     customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, drumPatternClipboard, onCopyDrumPattern, onPasteDrumPattern, generationState, isApiKeySet,
     bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassPattern, onBassPatternChange,
-    bassInstrument, onBassInstrumentChange
+    bassInstrument, onBassInstrumentChange, onGenerateAIBassline
   } = props;
   
   const [activeTab, setActiveTab] = useState<Tab>('chords');
@@ -347,6 +405,10 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
             onBassPatternChange={onBassPatternChange}
             bassInstrument={bassInstrument}
             onBassInstrumentChange={onBassInstrumentChange}
+            onGenerateAIBassline={onGenerateAIBassline}
+            chordProgressionEmpty={chordProgressionEmpty}
+            isApiKeySet={isApiKeySet}
+            generationState={generationState}
         />}
         {activeTab === 'effects' && <EffectsPanel
             reverbLevel={reverbLevel}
