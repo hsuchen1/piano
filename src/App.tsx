@@ -170,6 +170,15 @@ const App: React.FC = () => {
       setCurrentlyPlayingChordIndex(null);
   }, [audio]);
 
+  const handleToggleAccompaniment = useCallback(() => {
+    if (audio.isAccompanimentPlaying) {
+        handleStopAccompaniment();
+    } else {
+        // startAccompaniment in useAudio hook already checks for empty progression
+        audio.startAccompaniment();
+    }
+  }, [audio, handleStopAccompaniment]);
+
   const handleUserPianoVolumeChange = (newVolume: number) => {
     setUserPianoVolume(newVolume);
     audio.setUserPianoVolume(newVolume);
@@ -674,11 +683,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
       const target = event.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
+      
+      if (event.code === 'Space') {
+          event.preventDefault();
+          handleToggleAccompaniment();
+          return;
+      }
+      
+      const key = event.key.toLowerCase();
       const noteMapping = KEY_MAPPING[key];
       
       if (noteMapping && !audio.isPianoLoading) {
@@ -721,7 +737,7 @@ const App: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [audio, handleNoteAttack, handleNoteRelease, pressedComputerKeys]);
+  }, [audio, handleNoteAttack, handleNoteRelease, pressedComputerKeys, handleToggleAccompaniment]);
 
 
   return (

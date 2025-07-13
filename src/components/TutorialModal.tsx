@@ -144,6 +144,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               <li><strong>主控制 (面板頂部):</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
                       <ListItem><strong>播放/停止:</strong> 控制伴奏的啟動與停止。</ListItem>
+                      <ListItem><strong>空白鍵捷徑:</strong> 您也可以隨時按下<code className="bg-gray-800 px-1 rounded">空白鍵</code>來播放或暫停伴奏。</ListItem>
                       <ListItem><strong>速度 (BPM):</strong> 拖動滑桿調整伴奏的快慢。左側的紫色圓點會跟隨節拍閃爍。</ListItem>
                   </ul>
               </li>
