@@ -22,9 +22,9 @@ import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS
+  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS, ACCOMPANIMENT_BASE_OCTAVE
 } from './constants';
-import { isChordType, normalizeNoteName } from './utils/audioUtils';
+import { isChordType, normalizeNoteName, getVoicingOptionsForChord } from './utils/audioUtils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
@@ -615,46 +615,64 @@ const App: React.FC = () => {
   const handleSmartVoicing = async () => {
     if (generationState.isLoading || chordProgression.length < 2) return;
     if (!apiKey) {
-        alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
-        return;
+      alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
+      return;
     }
-    if (!window.confirm("這將會由 AI 自動調整您所有和弦的轉位以獲得更流暢的聲音。確定要繼續嗎？")) return;
+    if (!window.confirm("這將會由 AI 自動調整您所有和弦的轉位以獲得更流暢、音高更穩定的聲音。確定要繼續嗎？")) return;
 
     setGenerationState({ type: 'voicing', isLoading: true, error: null });
     try {
-        const ai = new GoogleGenAI({ apiKey });
-        const progressionWithMaxInversions = chordProgression.map(chord => ({
-            chord_name: `${chord.root}${chord.type}`,
-            max_inversion: (CHORD_INTERVALS[chord.type]?.length || 1) - 1,
-        }));
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Analyze this chord progression and determine the optimal inversion for each chord to ensure smooth voice leading. Progression data: ${JSON.stringify(progressionWithMaxInversions)}`,
-            config: {
-                systemInstruction: "You are a music arrangement expert specializing in voice leading. Your task is to analyze a chord progression and assign the optimal inversion for each chord. Your primary goal is to minimize melodic movement in the top voice. Your secondary goal is to maintain a relatively stable overall pitch range between adjacent chords, avoiding large, unnecessary octave jumps for the entire chord voicing. The input provides each chord's name and its maximum possible inversion number. Your response MUST be a JSON array of numbers. The length of your array must be identical to the input progression's length. Each number in your array represents the chosen inversion for the corresponding chord and MUST NOT exceed that chord's 'max_inversion' value.",
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: { type: Type.INTEGER }
-                }
-            }
-        });
-        const newInversions = JSON.parse(response.text);
-        if (newInversions.length !== chordProgression.length) {
-            throw new Error(`AI returned ${newInversions.length} inversions, but expected ${chordProgression.length}.`);
+      const ai = new GoogleGenAI({ apiKey });
+
+      const allVoicingOptions = chordProgression.map(chord => {
+        const voicingOptions = getVoicingOptionsForChord(chord, ACCOMPANIMENT_BASE_OCTAVE);
+        return {
+          chord_name: `${chord.root}${chord.type}`,
+          voicings: voicingOptions
+        };
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Analyze this chord progression and determine the optimal inversion for each chord. Progression data with all possible voicings: ${JSON.stringify(allVoicingOptions)}`,
+        config: {
+          systemInstruction: "You are a music arrangement expert specializing in voice leading. For each chord in the progression, you are given a list of possible voicings, each with an inversion number and the resulting MIDI-style note names (e.g., C4). Your task is to select one voicing (by its inversion number) for each chord. Your PRIMARY goal is to ensure that the chosen chord voicing falls comfortably within a pianist's typical accompaniment range, specifically aiming for the core notes to be around B2 to C4. Your SECONDARY goal is to minimize melodic movement in the highest note between adjacent chords. Your response MUST be a JSON array of numbers. The length of the array must be identical to the input progression's length. Each number represents the chosen inversion for the corresponding chord.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.INTEGER }
+          }
         }
-        setChordProgression(prev => prev.map((chord, index) => ({
-            ...chord,
-            inversion: newInversions[index]
-        })));
+      });
+
+      const newInversions = JSON.parse(response.text);
+      if (!Array.isArray(newInversions) || newInversions.length !== chordProgression.length) {
+        throw new Error(`AI returned an invalid response. Expected an array of ${chordProgression.length} numbers.`);
+      }
+
+      const validatedInversions = newInversions.map((inv, index) => {
+        if (typeof inv !== 'number') {
+          throw new Error(`AI returned a non-numeric inversion for chord ${index + 1}.`);
+        }
+        const maxInversion = (CHORD_INTERVALS[chordProgression[index].type]?.length || 1) - 1;
+        if (inv < 0 || inv > maxInversion) {
+          console.warn(`AI returned an out-of-bounds inversion (${inv}) for chord ${index + 1}. Clamping to nearest valid value.`);
+          return Math.max(0, Math.min(inv, maxInversion));
+        }
+        return inv;
+      });
+
+      setChordProgression(prev => prev.map((chord, index) => ({
+        ...chord,
+        inversion: validatedInversions[index]
+      })));
 
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        console.error("Error with Smart Voicing:", error);
-        alert(`AI 智慧轉位失敗: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      console.error("Error with Smart Voicing:", error);
+      alert(`AI 智慧轉位失敗: ${errorMessage}`);
     } finally {
-        setGenerationState({ type: null, isLoading: false, error: null });
+      setGenerationState({ type: null, isLoading: false, error: null });
     }
   };
 

@@ -105,6 +105,7 @@ export const DEFAULT_BASS_VOLUME = -5;
 export const DEFAULT_BASS_PATTERN = BassPattern.Off;
 export const DEFAULT_BASS_INSTRUMENT = BassInstrument.ElectricBass;
 export const BASS_DEFAULT_OCTAVE = 2;
+export const ACCOMPANIMENT_BASE_OCTAVE = 3;
 
 
 export const ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS: {

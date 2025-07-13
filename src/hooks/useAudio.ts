@@ -16,7 +16,7 @@ import {
   ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS,
   DRUM_SYNTH_CONFIGS, BASS_SYNTH_CONFIGS, PREDEFINED_DRUM_PATTERNS, BASS_DEFAULT_OCTAVE,
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
-  ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG
+  ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG, ACCOMPANIMENT_BASE_OCTAVE
 } from '../constants';
 import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils';
 import type { ChordWithIndex } from '../App';
@@ -64,7 +64,6 @@ export interface UseAudioReturn {
   setBassInstrument: (instrument: BassInstrument) => void;
 }
 
-const ACCOMPANIMENT_BASE_OCTAVE = 3;
 const PIANO_NOTE_RELEASE_TIME = 0.2;
 const DRUM_NOTE_DURATION = "16n"; // Short duration for drum hits
 
