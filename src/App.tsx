@@ -1,8 +1,10 @@
 
 
+
+
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "https://esm.sh/@google/genai@^1.9.0";
 
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
@@ -24,7 +26,7 @@ import {
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
   createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS, ACCOMPANIMENT_BASE_OCTAVE
 } from './constants';
-import { isChordType, normalizeNoteName, getVoicingOptionsForChord } from './utils/audioUtils';
+import { isChordType, normalizeNoteName, getVoicingOptionsForChord } from './utils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
@@ -556,14 +558,12 @@ const App: React.FC = () => {
       });
 
       validateAndSetProgression(JSON.parse(response.text));
+      setGenerationState({ type: null, isLoading: false, error: null });
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       console.error("Error generating chord progression:", error);
       setGenerationState({ type: 'chords', isLoading: false, error: `Generation failed: ${errorMessage}` });
-    } finally {
-      // Correctly reset the state regardless of the previous state type
-      setGenerationState({ type: null, isLoading: false, error: null });
     }
   };
   
@@ -603,12 +603,11 @@ const App: React.FC = () => {
             throw new Error(`AI returned ${newChords.length} chords, but expected ${chordProgression.length}.`);
         }
         validateAndSetProgression(newChords);
+        setGenerationState({ type: null, isLoading: false, error: null });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error("Error transforming chord progression:", error);
-        alert(`風格轉換失敗: ${errorMessage}`);
-      } finally {
-        setGenerationState({ type: null, isLoading: false, error: null });
+        setGenerationState({ type: 'style', isLoading: false, error: `風格轉換失敗: ${errorMessage}` });
       }
   };
 
@@ -666,13 +665,11 @@ const App: React.FC = () => {
         ...chord,
         inversion: validatedInversions[index]
       })));
-
+      setGenerationState({ type: null, isLoading: false, error: null });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       console.error("Error with Smart Voicing:", error);
-      alert(`AI 智慧轉位失敗: ${errorMessage}`);
-    } finally {
-      setGenerationState({ type: null, isLoading: false, error: null });
+      setGenerationState({ type: 'voicing', isLoading: false, error: `AI 智慧轉位失敗: ${errorMessage}` });
     }
   };
 
@@ -710,13 +707,12 @@ const App: React.FC = () => {
         });
         const newBassEvents = JSON.parse(response.text) as AiNoteEvent[];
         setAiBassEvents(newBassEvents);
+        setGenerationState({ type: null, isLoading: false, error: null });
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error("Error generating AI bassline:", error);
-        alert(`AI 貝斯線生成失敗: ${errorMessage}`);
-    } finally {
-        setGenerationState({ type: null, isLoading: false, error: null });
+        setGenerationState({ type: 'bass', isLoading: false, error: `AI 貝斯線生成失敗: ${errorMessage}` });
     }
   };
 
@@ -788,13 +784,12 @@ const App: React.FC = () => {
 
         const newPattern = JSON.parse(response.text) as CustomDrumChordPattern;
         handleSetCustomDrumPatternForChord(chordOriginalIndex, newPattern);
+        setGenerationState({ type: null, isLoading: false, error: null });
 
     } catch(error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error("Error generating drum pattern:", error);
-        alert(`鼓組生成失敗: ${errorMessage}`);
-    } finally {
-        setGenerationState({ type: null, isLoading: false, error: null });
+        setGenerationState({ type: 'drums', isLoading: false, error: `鼓組生成失敗: ${errorMessage}` });
     }
   };
 

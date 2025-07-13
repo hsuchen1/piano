@@ -1,9 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-// 如果您有全域 CSS (除了 Tailwind CDN 和 index.html 中的 <style>)，可以在這裡引入
-// import './index.css'; 
+import App from './App'; // Changed to import from within src
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -16,7 +14,6 @@ if (!rootElement) {
     </div>`;
   throw new Error("Could not find root element to mount to");
 }
-
 
 try {
   ReactDOM.createRoot(rootElement).render(

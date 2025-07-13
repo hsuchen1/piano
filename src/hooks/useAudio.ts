@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
@@ -18,12 +17,13 @@ import {
   NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT,
   ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG, ACCOMPANIMENT_BASE_OCTAVE
 } from '../constants';
-import { getChordNotes, getBassNotesForPattern } from '../utils/audioUtils';
+import { getChordNotes, getBassNotesForPattern } from '../utils';
 import type { ChordWithIndex } from '../App';
 import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
 
 const ToneRef = Tone;
-const SAMPLES_BASE_URL = `samples/`;
+// Use Vite's env variable for robust pathing in different deployment scenarios (root vs. subdirectory)
+const SAMPLES_BASE_URL = `${(import.meta as any).env.BASE_URL || ''}samples/`;
 
 type AccompanimentSynthMapEntry = {
   synth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler;

@@ -1,3 +1,4 @@
+
 import * as Tone from 'tone';
 import { NoteName, ChordType, ChordDefinition, BassPattern } from '../types';
 import { CHORD_INTERVALS, NOTE_NAMES_SHARP, NOTE_NAMES_FLAT } from '../constants';

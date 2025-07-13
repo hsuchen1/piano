@@ -19,15 +19,7 @@ export default defineConfig({
   base: base,
   build: {
     rollupOptions: {
-      // Mark CDN-based imports as external to prevent build errors.
-      // The browser will resolve these using the importmap in index.html.
-      external: [
-        'react',
-        'react-dom',
-        'react-dom/client',
-        '@google/genai',
-        'tone'
-      ]
+      // No longer needed, we want to bundle dependencies.
     }
   },
   plugins: [
