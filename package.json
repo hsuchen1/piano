@@ -9,15 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^4.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tone": "^15.1.22",
     "vite": "^6.3.5",
-    "@vitejs/plugin-react": "^4.5.1",
     "vite-plugin-pwa": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "gh-pages": "^6.3.0",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
   }
