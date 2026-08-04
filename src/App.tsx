@@ -599,53 +599,59 @@ const App: React.FC = () => {
                 isGeneratingVoicing={generationState.isLoading && generationState.type === 'voicing'}
               />
               <AccompanimentControls
-                bpm={audio.currentBPM}
-                onBpmChange={audio.setAccompanimentBPM}
-                isBeat={isBeat}
-                accompanimentLayers={accompanimentLayers}
-                onAddAccompanimentLayer={handleAddAccompanimentLayer}
-                onRemoveAccompanimentLayer={handleRemoveAccompanimentLayer}
-                onUpdateAccompanimentLayer={handleUpdateAccompanimentLayer}
-                isPlaying={audio.isAccompanimentPlaying}
-                onPlay={audio.startAccompaniment}
-                onStop={handleStopAccompaniment}
-                isAudioReady={audio.isAudioReady}
-                chordProgressionEmpty={chordProgression.length === 0}
-                chordProgressionForCustomEditor={progressionWithIndices}
-                customRhythms={customRhythms}
-                onUpdateCustomBeat={handleUpdateCustomRhythmBeat}
-                // Effects and Groove
-                reverbLevel={reverbLevel}
-                onReverbLevelChange={handleReverbChange}
-                delayLevel={delayLevel}
-                onDelayLevelChange={handleDelayChange}
-                swing={swing}
-                onSwingChange={handleSwingChange}
-                // Drum Props
-                drumsEnabled={drumsEnabled}
-                onDrumsEnabledChange={setDrumsEnabled}
-                drumVolume={drumVolume}
-                onDrumVolumeChange={handleDrumVolumeChange}
-                drumPattern={drumPattern}
-                onDrumPatternChange={setDrumPattern}
-                customDrumData={customDrumData}
-                onUpdateCustomDrumCell={handleUpdateCustomDrumCell}
-                onGenerateDrumPattern={handleGenerateDrumPattern}
-                drumPatternClipboard={drumPatternClipboard}
-                onCopyDrumPattern={handleCopyDrumPattern}
-                onPasteDrumPattern={handlePasteDrumPattern}
+                progression={progressionWithIndices}
                 generationState={generationState}
                 isApiKeySet={!!apiKey}
-                // Bass Props
-                bassEnabled={bassEnabled}
-                onBassEnabledChange={setBassEnabled}
-                bassVolume={bassVolume}
-                onBassVolumeChange={handleBassVolumeChange}
-                bassPattern={bassPattern}
-                onBassPatternChange={setBassPattern}
-                bassInstrument={bassInstrument}
-                onBassInstrumentChange={setBassInstrument}
-                onGenerateAIBassline={handleGenerateAIBassline}
+                transport={{
+                  bpm: audio.currentBPM,
+                  onBpmChange: audio.setAccompanimentBPM,
+                  isBeat,
+                  isPlaying: audio.isAccompanimentPlaying,
+                  onPlay: audio.startAccompaniment,
+                  onStop: handleStopAccompaniment,
+                  isAudioReady: audio.isAudioReady,
+                }}
+                layers={{
+                  accompanimentLayers,
+                  onAddAccompanimentLayer: handleAddAccompanimentLayer,
+                  onRemoveAccompanimentLayer: handleRemoveAccompanimentLayer,
+                  onUpdateAccompanimentLayer: handleUpdateAccompanimentLayer,
+                  customRhythms,
+                  onUpdateCustomBeat: handleUpdateCustomRhythmBeat,
+                }}
+                effects={{
+                  reverbLevel,
+                  onReverbLevelChange: handleReverbChange,
+                  delayLevel,
+                  onDelayLevelChange: handleDelayChange,
+                  swing,
+                  onSwingChange: handleSwingChange,
+                }}
+                bass={{
+                  bassEnabled,
+                  onBassEnabledChange: setBassEnabled,
+                  bassVolume,
+                  onBassVolumeChange: handleBassVolumeChange,
+                  bassPattern,
+                  onBassPatternChange: setBassPattern,
+                  bassInstrument,
+                  onBassInstrumentChange: setBassInstrument,
+                  onGenerateAIBassline: handleGenerateAIBassline,
+                }}
+                drums={{
+                  drumsEnabled,
+                  onDrumsEnabledChange: setDrumsEnabled,
+                  drumVolume,
+                  onDrumVolumeChange: handleDrumVolumeChange,
+                  drumPattern,
+                  onDrumPatternChange: setDrumPattern,
+                  customDrumData,
+                  onUpdateCustomDrumCell: handleUpdateCustomDrumCell,
+                  onGenerateDrumPattern: handleGenerateDrumPattern,
+                  drumPatternClipboard,
+                  onCopyDrumPattern: handleCopyDrumPattern,
+                  onPasteDrumPattern: handlePasteDrumPattern,
+                }}
               />
             </div>
           </div>

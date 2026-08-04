@@ -9,33 +9,40 @@ import type { ChordWithIndex } from '../types';
 
 type Tab = 'chords' | 'drums' | 'bass' | 'effects';
 
-interface AccompanimentControlsProps {
+/**
+ * This component used to take 47 flat props, which made every call site a wall of
+ * bindings and gave no hint about which values belonged together. The props are now
+ * grouped to mirror the four tabs plus the transport bar.
+ *
+ * Each group is spread into its panel rather than passed as an object, so the
+ * memoised panels keep comparing individual primitives and do not re-render just
+ * because a wrapper object was recreated.
+ */
+
+/** Playback and tempo, shown above the tabs. */
+export interface TransportControlsProps {
   bpm: number;
   onBpmChange: (bpm: number) => void;
+  /** Pulses in time with the beat. */
   isBeat: boolean;
-  
-  accompanimentLayers: AccompanimentLayer[];
-  onAddAccompanimentLayer: () => void;
-  onRemoveAccompanimentLayer: (id: string) => void;
-  onUpdateAccompanimentLayer: <K extends keyof AccompanimentLayer>(id: string, field: K, value: AccompanimentLayer[K]) => void;
-  
   isPlaying: boolean;
   onPlay: () => void;
   onStop: () => void;
   isAudioReady: boolean;
-  chordProgressionEmpty: boolean;
-  
-  chordProgressionForCustomEditor: ChordWithIndex[];
+}
+
+/** The "chords" tab: one entry per accompaniment layer. */
+export interface ChordLayerControlsProps {
+  accompanimentLayers: AccompanimentLayer[];
+  onAddAccompanimentLayer: () => void;
+  onRemoveAccompanimentLayer: (id: string) => void;
+  onUpdateAccompanimentLayer: <K extends keyof AccompanimentLayer>(id: string, field: K, value: AccompanimentLayer[K]) => void;
   customRhythms: Record<string, BeatDuration[][]>;
   onUpdateCustomBeat: (layerId: string, chordIndex: number, beatIndex: number, newDuration: BeatDuration) => void;
+}
 
-  reverbLevel: number;
-  onReverbLevelChange: (level: number) => void;
-  delayLevel: number;
-  onDelayLevelChange: (level: number) => void;
-  swing: number;
-  onSwingChange: (amount: number) => void;
-
+/** The "drums" tab. */
+export interface DrumControlsProps {
   drumsEnabled: boolean;
   onDrumsEnabledChange: (enabled: boolean) => void;
   drumVolume: number;
@@ -48,9 +55,10 @@ interface AccompanimentControlsProps {
   drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
   onCopyDrumPattern: (chordOriginalIndex: number) => void;
   onPasteDrumPattern: (chordOriginalIndex: number) => void;
-  generationState: GenerationState;
-  isApiKeySet: boolean;
+}
 
+/** The "bass" tab. */
+export interface BassControlsProps {
   bassEnabled: boolean;
   onBassEnabledChange: (enabled: boolean) => void;
   bassVolume: number;
@@ -60,6 +68,28 @@ interface AccompanimentControlsProps {
   bassInstrument: BassInstrument;
   onBassInstrumentChange: (instrument: BassInstrument) => void;
   onGenerateAIBassline: (prompt: string) => void;
+}
+
+/** The "effects" tab. These apply to every voice, including manual playing. */
+export interface EffectControlsProps {
+  reverbLevel: number;
+  onReverbLevelChange: (level: number) => void;
+  delayLevel: number;
+  onDelayLevelChange: (level: number) => void;
+  swing: number;
+  onSwingChange: (amount: number) => void;
+}
+
+interface AccompanimentControlsProps {
+  transport: TransportControlsProps;
+  layers: ChordLayerControlsProps;
+  drums: DrumControlsProps;
+  bass: BassControlsProps;
+  effects: EffectControlsProps;
+  /** Shared by the chord and drum tabs, which both edit per-chord grids. */
+  progression: ChordWithIndex[];
+  generationState: GenerationState;
+  isApiKeySet: boolean;
 }
 
 // --- Memoized TabButton Component ---
@@ -311,21 +341,24 @@ const EffectsPanel: React.FC<EffectsPanelProps> = memo(({ reverbLevel, onReverbL
 ));
 EffectsPanel.displayName = 'EffectsPanel';
 
-const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
-  const {
-    bpm, onBpmChange, isBeat,
-    isPlaying, onPlay, onStop, isAudioReady, chordProgressionEmpty,
-    // Destructure all props needed for panels
-    accompanimentLayers, onAddAccompanimentLayer, onRemoveAccompanimentLayer, onUpdateAccompanimentLayer,
-    chordProgressionForCustomEditor, customRhythms, onUpdateCustomBeat,
-    reverbLevel, onReverbLevelChange, delayLevel, onDelayLevelChange, swing, onSwingChange,
-    drumsEnabled, onDrumsEnabledChange, drumVolume, onDrumVolumeChange, drumPattern, onDrumPatternChange,
-    customDrumData, onUpdateCustomDrumCell, onGenerateDrumPattern, drumPatternClipboard, onCopyDrumPattern, onPasteDrumPattern, generationState, isApiKeySet,
-    bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassPattern, onBassPatternChange,
-    bassInstrument, onBassInstrumentChange, onGenerateAIBassline
-  } = props;
-  
+const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
+  transport,
+  layers,
+  drums,
+  bass,
+  effects,
+  progression,
+  generationState,
+  isApiKeySet,
+}) => {
+  const { bpm, onBpmChange, isBeat, isPlaying, onPlay, onStop, isAudioReady } = transport;
+
   const [activeTab, setActiveTab] = useState<Tab>('chords');
+
+  // Derived rather than passed in: the caller already gives us the progression, so
+  // a separate `chordProgressionEmpty` prop was a second source of truth for the
+  // same fact.
+  const chordProgressionEmpty = progression.length === 0;
   const playButtonDisabled = !isAudioReady || chordProgressionEmpty;
 
   return (
@@ -370,54 +403,25 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = (props) => {
 
       {/* --- Tab Content --- */}
       <div className="bg-gray-600 p-3 rounded-b-md rounded-r-md min-h-[200px]">
-        {activeTab === 'chords' && <ChordInstrumentPanel 
-            accompanimentLayers={accompanimentLayers}
-            onAddAccompanimentLayer={onAddAccompanimentLayer}
-            onRemoveAccompanimentLayer={onRemoveAccompanimentLayer}
-            onUpdateAccompanimentLayer={onUpdateAccompanimentLayer}
-            chordProgressionForCustomEditor={chordProgressionForCustomEditor}
-            customRhythms={customRhythms}
-            onUpdateCustomBeat={onUpdateCustomBeat}
+        {/* Groups are spread, not passed as objects, so each memoised panel still
+            compares individual values instead of a fresh wrapper reference. */}
+        {activeTab === 'chords' && <ChordInstrumentPanel
+            {...layers}
+            chordProgressionForCustomEditor={progression}
         />}
-        {activeTab === 'drums' && <DrumKitPanel 
-            drumsEnabled={drumsEnabled}
-            onDrumsEnabledChange={onDrumsEnabledChange}
-            drumVolume={drumVolume}
-            onDrumVolumeChange={onDrumVolumeChange}
-            drumPattern={drumPattern}
-            onDrumPatternChange={onDrumPatternChange}
-            chordProgressionForCustomEditor={chordProgressionForCustomEditor}
-            customDrumData={customDrumData}
-            onUpdateCustomDrumCell={onUpdateCustomDrumCell}
-            onGenerateDrumPattern={onGenerateDrumPattern}
-            drumPatternClipboard={drumPatternClipboard}
-            onCopyDrumPattern={onCopyDrumPattern}
-            onPasteDrumPattern={onPasteDrumPattern}
+        {activeTab === 'drums' && <DrumKitPanel
+            {...drums}
+            chordProgressionForCustomEditor={progression}
             generationState={generationState}
             isApiKeySet={isApiKeySet}
         />}
-        {activeTab === 'bass' && <BassGuitarPanel 
-            bassEnabled={bassEnabled}
-            onBassEnabledChange={onBassEnabledChange}
-            bassVolume={bassVolume}
-            onBassVolumeChange={onBassVolumeChange}
-            bassPattern={bassPattern}
-            onBassPatternChange={onBassPatternChange}
-            bassInstrument={bassInstrument}
-            onBassInstrumentChange={onBassInstrumentChange}
-            onGenerateAIBassline={onGenerateAIBassline}
+        {activeTab === 'bass' && <BassGuitarPanel
+            {...bass}
             chordProgressionEmpty={chordProgressionEmpty}
             isApiKeySet={isApiKeySet}
             generationState={generationState}
         />}
-        {activeTab === 'effects' && <EffectsPanel
-            reverbLevel={reverbLevel}
-            onReverbLevelChange={onReverbLevelChange}
-            delayLevel={delayLevel}
-            onDelayLevelChange={onDelayLevelChange}
-            swing={swing}
-            onSwingChange={onSwingChange}
-        />}
+        {activeTab === 'effects' && <EffectsPanel {...effects} />}
       </div>
       
       {(!isAudioReady) && <p className="text-xs text-yellow-400 text-center mt-1">點擊琴鍵或「播放」以初始化音訊引擎。</p>}
