@@ -23,7 +23,15 @@ import type { FMSynthOptions, AMSynthOptions } from 'tone';
 
 const ToneRef = Tone;
 // Use Vite's env variable for robust pathing in different deployment scenarios (root vs. subdirectory)
-const SAMPLES_BASE_URL = `${(import.meta as any).env.BASE_URL || ''}samples/`;
+const SAMPLES_BASE_URL = `${import.meta.env.BASE_URL || ''}samples/`;
+
+/**
+ * Every Tone.js node carries a `disposed` flag, but the union types used through
+ * this hook (PolySynth | Sampler, MembraneSynth | NoiseSynth | MetalSynth, ...)
+ * do not surface it on the union. Call sites used to reach for `as any`; this
+ * names the one property we actually need instead, so the assertions stay narrow.
+ */
+type ToneDisposable = { disposed?: boolean };
 
 type AccompanimentSynthMapEntry = {
   synth: Tone.PolySynth<Tone.Synth | Tone.FMSynth | Tone.AMSynth> | Tone.Sampler;
@@ -67,28 +75,63 @@ export interface UseAudioReturn {
 const PIANO_NOTE_RELEASE_TIME = 0.2;
 const DRUM_NOTE_DURATION = "16n"; // Short duration for drum hits
 
-export const useAudio = (
-    progressionWithIndicesFromProps: ChordWithIndex[],
-    customRhythmsFromProps: Record<string, BeatDuration[][]>,
-    accompanimentLayersProp: AccompanimentLayer[],
-    // Drum props
-    drumsEnabledProp: boolean,
-    drumVolumeProp: number,
-    drumPatternProp: DrumPattern,
-    customDrumDataProp: CustomDrumProgressionData,
-    // Bass props
-    bassEnabledProp: boolean,
-    bassVolumeProp: number,
-    bassPatternProp: BassPattern,
-    bassInstrumentProp: BassInstrument,
-    aiBassEventsProp: AiNoteEvent[] | null,
-    initialUserPianoVolume: number,
-    // New callbacks
-    setCurrentlyPlayingChordIndex: (index: number | null) => void,
-    setBeatVisual: (active: boolean) => void,
-    setAccompanimentNotes: React.Dispatch<React.SetStateAction<Set<string>>>,
-    showAccompanimentNotes: boolean
-): UseAudioReturn => {
+/**
+ * Inputs to useAudio.
+ *
+ * These were 17 positional parameters. Eleven of them were `boolean | number`,
+ * so transposing any two of the same type produced no type error and no runtime
+ * error either -- just the wrong sound. Named fields make that class of mistake
+ * impossible.
+ */
+export interface UseAudioOptions {
+  /** Chords to play, each tagged with its index in the user's progression. */
+  progression: ChordWithIndex[];
+  /** Per-layer custom rhythm grids, keyed by accompaniment layer id. */
+  customRhythms: Record<string, BeatDuration[][]>;
+  accompanimentLayers: AccompanimentLayer[];
+
+  // Drums
+  drumsEnabled: boolean;
+  drumVolume: number;
+  drumPattern: DrumPattern;
+  customDrumData: CustomDrumProgressionData;
+
+  // Bass
+  bassEnabled: boolean;
+  bassVolume: number;
+  bassPattern: BassPattern;
+  bassInstrument: BassInstrument;
+  aiBassEvents: AiNoteEvent[] | null;
+
+  /** Only read on mount; later changes go through setUserPianoVolume. */
+  initialUserPianoVolume: number;
+  showAccompanimentNotes: boolean;
+
+  // Callbacks driving UI feedback from the Tone.js transport.
+  onPlayingChordIndexChange: (index: number | null) => void;
+  onBeat: (active: boolean) => void;
+  setAccompanimentNotes: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+export const useAudio = ({
+  progression: progressionWithIndicesFromProps,
+  customRhythms: customRhythmsFromProps,
+  accompanimentLayers: accompanimentLayersProp,
+  drumsEnabled: drumsEnabledProp,
+  drumVolume: drumVolumeProp,
+  drumPattern: drumPatternProp,
+  customDrumData: customDrumDataProp,
+  bassEnabled: bassEnabledProp,
+  bassVolume: bassVolumeProp,
+  bassPattern: bassPatternProp,
+  bassInstrument: bassInstrumentProp,
+  aiBassEvents: aiBassEventsProp,
+  initialUserPianoVolume,
+  showAccompanimentNotes,
+  onPlayingChordIndexChange: setCurrentlyPlayingChordIndex,
+  onBeat: setBeatVisual,
+  setAccompanimentNotes,
+}: UseAudioOptions): UseAudioReturn => {
   const [isAudioReady, setIsAudioReady] = useState(false);
   const pianoSynth = useRef<(Tone.PolySynth<Tone.Synth> | Tone.Sampler) | null>(null);
   const userPianoVolumeNode = useRef<Tone.Volume | null>(null);
@@ -113,7 +156,11 @@ export const useAudio = (
   const [currentTransposition, setCurrentTransposition] = useState(0);
   const [isAccompanimentPlaying, setIsAccompanimentPlaying] = useState(false);
 
-  const [internalChordProgression, setInternalChordProgression] = useState<ChordWithIndex[]>(progressionWithIndicesFromProps);
+  // The progression is read straight from props. It used to be mirrored into state
+  // by an effect, which meant the Tone.js sequence was rebuilt one render behind
+  // the actual progression. App memoises this array, so its identity only changes
+  // when the progression really changes.
+  const internalChordProgression = progressionWithIndicesFromProps;
   const customRhythmsRef = useRef<Record<string, BeatDuration[][]>>(customRhythmsFromProps);
   const customDrumDataRef = useRef<CustomDrumProgressionData>(customDrumDataProp);
 
@@ -149,7 +196,6 @@ export const useAudio = (
   useEffect(() => { showAccompanimentNotesRef.current = showAccompanimentNotes; }, [showAccompanimentNotes]);
   useEffect(() => { aiBassEventsRef.current = aiBassEventsProp; }, [aiBassEventsProp]);
 
-  useEffect(() => { setInternalChordProgression(progressionWithIndicesFromProps); }, [progressionWithIndicesFromProps]);
   useEffect(() => { customRhythmsRef.current = customRhythmsFromProps; }, [customRhythmsFromProps]);
   useEffect(() => { customDrumDataRef.current = customDrumDataProp; }, [customDrumDataProp]);
 
@@ -237,7 +283,7 @@ export const useAudio = (
   }, [accompanimentLayersProp, isAudioReady, createAccompanimentSynthInstance, connectToEffects]);
 
   const createUserPianoSynthInstance = useCallback((instrument: UserPianoInstrument, volNode: Tone.Volume) => {
-    if (pianoSynth.current && !(pianoSynth.current as any).disposed) {
+    if (pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed) {
         if (pianoSynth.current instanceof ToneRef.PolySynth) {
             pianoSynth.current.releaseAll(ToneRef.now());
         }
@@ -261,7 +307,7 @@ export const useAudio = (
         onerror: (error) => {
           console.error('Error loading sampled grand piano:', error);
           if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
-            setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
+            setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as ToneDisposable).disposed) tempSamplerRef.dispose();
             createFallbackSynth();
           }
         }
@@ -274,7 +320,7 @@ export const useAudio = (
         onerror: (error) => {
           console.error('Error loading sampled guitar:', error);
           if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
-            setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
+            setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as ToneDisposable).disposed) tempSamplerRef.dispose();
             createFallbackSynth();
           }
         }
@@ -287,7 +333,7 @@ export const useAudio = (
           onerror: (error) => {
             console.error('Error loading string ensemble:', error);
             if (pianoSynth.current === tempSamplerRef || !pianoSynth.current) {
-              setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as any).disposed) tempSamplerRef.dispose();
+              setIsPianoLoading(false); if (tempSamplerRef && !(tempSamplerRef as ToneDisposable).disposed) tempSamplerRef.dispose();
               createFallbackSynth();
             }
           }
@@ -307,7 +353,7 @@ export const useAudio = (
   const createDrumSynths = useCallback((volNode: Tone.Volume) => {
     (Object.keys(DrumInstrument) as Array<keyof typeof DrumInstrument>).forEach(key => {
         const enumValue = DrumInstrument[key];
-        if (drumSynths.current[enumValue] && !(drumSynths.current[enumValue] as any).disposed) {
+        if (drumSynths.current[enumValue] && !(drumSynths.current[enumValue] as ToneDisposable).disposed) {
             drumSynths.current[enumValue]!.dispose();
         }
         const config = DRUM_SYNTH_CONFIGS[enumValue];
@@ -322,7 +368,7 @@ export const useAudio = (
   }, []);
 
   const createBassSynthInstance = useCallback((instrument: BassInstrument, volNode: Tone.Volume) => {
-    if (bassSynth.current && !(bassSynth.current as any).disposed) {
+    if (bassSynth.current && !(bassSynth.current as ToneDisposable).disposed) {
         bassSynth.current.dispose();
         bassSynth.current = null;
     }
@@ -370,7 +416,7 @@ export const useAudio = (
         connectToEffects(userPianoVolumeNode.current);
         userPianoVolumeNode.current.toDestination();
       }
-      if (!pianoSynth.current || (pianoSynth.current as any).disposed) createUserPianoSynthInstance(currentUserPianoInstrumentRef.current, userPianoVolumeNode.current);
+      if (!pianoSynth.current || (pianoSynth.current as ToneDisposable).disposed) createUserPianoSynthInstance(currentUserPianoInstrumentRef.current, userPianoVolumeNode.current);
 
       // Accompaniment Layers (initial setup)
       accompanimentLayersRef.current.forEach(layer => {
@@ -397,7 +443,7 @@ export const useAudio = (
         connectToEffects(bassVolumeNode.current);
         bassVolumeNode.current.toDestination();
       }
-      if (!bassSynth.current || (bassSynth.current as any).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
+      if (!bassSynth.current || (bassSynth.current as ToneDisposable).disposed) createBassSynthInstance(bassInstrumentRef.current, bassVolumeNode.current);
 
       // BPM Visualizer Loop
       if (!beatVisualizerLoop.current) {
@@ -424,7 +470,7 @@ export const useAudio = (
         entry.synth.releaseAll(ToneRef.now());
     });
     
-    if(bassSynth.current && !(bassSynth.current as any).disposed) {
+    if(bassSynth.current && !(bassSynth.current as ToneDisposable).disposed) {
         if (bassSynth.current instanceof ToneRef.Sampler) {
             bassSynth.current.releaseAll(ToneRef.now());
         } else { // It's a MonoSynth
@@ -476,7 +522,7 @@ export const useAudio = (
           ToneRef.Draw.schedule(() => { setCurrentlyPlayingChordIndex(chordDef.originalIndex); }, scheduledTimeInSeconds);
           accompanimentLayersRef.current.forEach(layer => {
             const synthEntry = accompanimentSynths.current.get(layer.id);
-            if (!synthEntry || (synthEntry.synth as any).disposed) return;
+            if (!synthEntry || (synthEntry.synth as ToneDisposable).disposed) return;
             const { synth } = synthEntry;
             const rhythmPattern = layer.rhythmPattern;
             if (rhythmPattern !== AccompanimentRhythmPattern.Custom) {
@@ -519,10 +565,10 @@ export const useAudio = (
                     const drumInst = DrumInstrument[key];
                     if (currentDrumPatternForChord && currentDrumPatternForChord[drumInst]?.[beat]?.[sub]) {
                       const synth = drumSynths.current[drumInst];
-                      if (synth && !(synth as any).disposed) {
+                      if (synth && !(synth as ToneDisposable).disposed) {
                         if (drumInst === DrumInstrument.Kick) { synth.triggerAttackRelease("C2", DRUM_NOTE_DURATION, drumHitTime); } 
                         else if (drumInst === DrumInstrument.Tom1) { synth.triggerAttackRelease("G2", DRUM_NOTE_DURATION, drumHitTime); } 
-                        else if (drumInst === DrumInstrument.CrashCymbal) { ToneRef.Draw.schedule(() => { if (synth && !(synth as any).disposed) { (synth as Tone.MetalSynth).triggerAttack(drumHitTime); } }, drumHitTime); } 
+                        else if (drumInst === DrumInstrument.CrashCymbal) { ToneRef.Draw.schedule(() => { if (synth && !(synth as ToneDisposable).disposed) { (synth as Tone.MetalSynth).triggerAttack(drumHitTime); } }, drumHitTime); } 
                         else { synth.triggerAttackRelease(DRUM_NOTE_DURATION, drumHitTime); }
                       }
                     }
@@ -531,7 +577,7 @@ export const useAudio = (
               }
             }
           }
-          if (bassEnabledRef.current && bassSynth.current && !(bassSynth.current as any).disposed && bassPatternRef.current !== BassPattern.Off && bassPatternRef.current !== BassPattern.AiGenerated) {
+          if (bassEnabledRef.current && bassSynth.current && !(bassSynth.current as ToneDisposable).disposed && bassPatternRef.current !== BassPattern.Off && bassPatternRef.current !== BassPattern.AiGenerated) {
             const bassNotes = getBassNotesForPattern(chordDef, bassPatternRef.current, BASS_DEFAULT_OCTAVE, currentTranspositionRef.current);
             bassNotes.forEach(bassNoteEvent => {
               const offset = ToneRef.Time(bassNoteEvent.timeOffset).toSeconds();
@@ -552,7 +598,7 @@ export const useAudio = (
     if (hasProgression && bassPattern === BassPattern.AiGenerated && aiEvents && aiEvents.length > 0) {
         const partEvents = aiEvents.map(event => ({ time: event.time, note: event.note, duration: event.duration }));
         const newPart = new ToneRef.Part((time, value) => {
-            if (bassSynth.current && !(bassSynth.current as any).disposed && bassEnabledRef.current) {
+            if (bassSynth.current && !(bassSynth.current as ToneDisposable).disposed && bassEnabledRef.current) {
                 bassSynth.current.triggerAttackRelease(value.note, value.duration, time);
                 scheduleNoteHighlight([value.note], time, value.duration);
             }
@@ -572,8 +618,15 @@ export const useAudio = (
             if (aiBassPart.current) aiBassPart.current.start(0);
             if (transportWasRunning) { ToneRef.Transport.start(ToneRef.now(), currentPosition); } 
             else { ToneRef.Transport.start(ToneRef.now() + 0.1); }
-        } else {
-            stopAccompaniment();
+        } else if (ToneRef.Transport.state === 'started') {
+            // Safety net for the transient window where playback is still flagged
+            // as active but every chord has been removed. Callers are responsible
+            // for stopping playback (App does this when clearing or removing the
+            // last chord); here we only silence the transport, deliberately
+            // without touching React state, because setting state from an effect
+            // triggers a second render pass for something the event handler
+            // already knows about.
+            ToneRef.Transport.stop(ToneRef.now());
         }
     }
   }, [
@@ -582,22 +635,23 @@ export const useAudio = (
     isAccompanimentPlaying,
     aiBassEventsProp,
     bassPatternProp,
-    stopAccompaniment,
     setCurrentlyPlayingChordIndex,
     scheduleNoteHighlight
   ]);
 
 
   const attackPianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
-     const play = () => { if (pianoSynth.current && !(pianoSynth.current as any).disposed && ToneRef && !isPianoLoading) { const fullName = getNoteFullName(noteName, octave, currentTranspositionRef.current); pianoSynth.current.triggerAttack(fullName as any, ToneRef.now()); if (isComputerKey) activePianoNotesByKey.current.set(`${noteName}${octave}`, fullName); } else if (!isPianoLoading) { initializeAudio().then(success => { if(success && pianoSynth.current && !(pianoSynth.current as any).disposed && !isPianoLoading){ const fullName = getNoteFullName(noteName, octave, currentTranspositionRef.current); pianoSynth.current.triggerAttack(fullName as any, ToneRef.now()); if (isComputerKey) activePianoNotesByKey.current.set(`${noteName}${octave}`, fullName);}});}};
+     const play = () => { if (pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed && ToneRef && !isPianoLoading) { const fullName = getNoteFullName(noteName, octave, currentTranspositionRef.current); pianoSynth.current.triggerAttack(fullName as any, ToneRef.now()); if (isComputerKey) activePianoNotesByKey.current.set(`${noteName}${octave}`, fullName); } else if (!isPianoLoading) { initializeAudio().then(success => { if(success && pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed && !isPianoLoading){ const fullName = getNoteFullName(noteName, octave, currentTranspositionRef.current); pianoSynth.current.triggerAttack(fullName as any, ToneRef.now()); if (isComputerKey) activePianoNotesByKey.current.set(`${noteName}${octave}`, fullName);}});}};
      if (!isAudioReady) initializeAudio().then(success => { if (success && !isPianoLoading) play(); }); else if (!isPianoLoading) play();
   }, [isAudioReady, initializeAudio, isPianoLoading]);
 
   const releasePianoNote = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
-    let noteToRelease: string | null = null; const keyStr = `${noteName}${octave}`;
-    if (isComputerKey) { noteToRelease = getNoteFullName(noteName, octave, currentTranspositionRef.current); if (activePianoNotesByKey.current.has(keyStr)) activePianoNotesByKey.current.delete(keyStr); }
-    else { noteToRelease = getNoteFullName(noteName, octave, currentTranspositionRef.current); }
-    if (noteToRelease && pianoSynth.current && !(pianoSynth.current as any).disposed && ToneRef && !isPianoLoading) pianoSynth.current.triggerRelease([noteToRelease] as any, ToneRef.now() + PIANO_NOTE_RELEASE_TIME);
+    // Both branches previously computed the same note name via duplicated calls,
+    // behind a redundant null initialiser. Map.delete is already a no-op when the
+    // key is absent, so the has() guard was redundant too.
+    const noteToRelease = getNoteFullName(noteName, octave, currentTranspositionRef.current);
+    if (isComputerKey) activePianoNotesByKey.current.delete(`${noteName}${octave}`);
+    if (noteToRelease && pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed && ToneRef && !isPianoLoading) pianoSynth.current.triggerRelease([noteToRelease] as any, ToneRef.now() + PIANO_NOTE_RELEASE_TIME);
   }, [isPianoLoading]);
 
   const startAccompaniment = useCallback(async () => {
@@ -619,7 +673,7 @@ export const useAudio = (
   }, [isAudioReady, createUserPianoSynthInstance, isPianoLoading]);
 
   const setTransposition = useCallback((semitones: number) => {
-    if (pianoSynth.current && !(pianoSynth.current as any).disposed && ToneRef && !isPianoLoading && pianoSynth.current instanceof ToneRef.PolySynth) {
+    if (pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed && ToneRef && !isPianoLoading && pianoSynth.current instanceof ToneRef.PolySynth) {
       pianoSynth.current.releaseAll(ToneRef.now());
     }
     activePianoNotesByKey.current.clear();
@@ -669,33 +723,44 @@ export const useAudio = (
 
 
   useEffect(() => { // Master cleanup
+    // These three refs hold containers that are created once and only ever mutated
+    // in place -- `.current` is never reassigned anywhere in this hook. Capturing
+    // them here is therefore equivalent to reading `.current` inside the cleanup,
+    // and it satisfies react-hooks/exhaustive-deps, which cannot tell the
+    // difference between a stable container and a ref that gets swapped out.
+    // Note we must NOT snapshot the *contents*: disposal has to act on whatever
+    // synths exist at unmount, which at mount time is nothing.
+    const synthsToDispose = accompanimentSynths.current;
+    const drumSynthsToDispose = drumSynths.current;
+    const activeNotesToClear = activePianoNotesByKey.current;
+
     return () => {
       if (ToneRef) { if (ToneRef.Transport.state !== 'stopped') ToneRef.Transport.stop(); ToneRef.Transport.cancel(); }
-      if (pianoSynth.current && !(pianoSynth.current as any).disposed) {
+      if (pianoSynth.current && !(pianoSynth.current as ToneDisposable).disposed) {
         if (pianoSynth.current instanceof ToneRef.PolySynth) pianoSynth.current.releaseAll(ToneRef.now());
         pianoSynth.current.dispose();
       }
       if (userPianoVolumeNode.current && !userPianoVolumeNode.current.disposed) userPianoVolumeNode.current.dispose();
       
-      accompanimentSynths.current.forEach(entry => {
-        if(entry.synth && !(entry.synth as any).disposed) entry.synth.dispose();
+      synthsToDispose.forEach(entry => {
+        if(entry.synth && !(entry.synth as ToneDisposable).disposed) entry.synth.dispose();
         if(entry.volumeNode && !entry.volumeNode.disposed) entry.volumeNode.dispose();
       });
-      accompanimentSynths.current.clear();
+      synthsToDispose.clear();
 
       if(globalReverb.current && !globalReverb.current.disposed) globalReverb.current.dispose();
       if(globalDelay.current && !globalDelay.current.disposed) globalDelay.current.dispose();
-      if(beatVisualizerLoop.current && !(beatVisualizerLoop.current as any).disposed) beatVisualizerLoop.current.dispose();
+      if(beatVisualizerLoop.current && !(beatVisualizerLoop.current as ToneDisposable).disposed) beatVisualizerLoop.current.dispose();
 
       if (drumVolumeNode.current && !drumVolumeNode.current.disposed) drumVolumeNode.current.dispose();
-      (Object.values(drumSynths.current) as (Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth)[])
-        .filter(synth => synth && !(synth as any).disposed)
+      (Object.values(drumSynthsToDispose) as (Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth)[])
+        .filter(synth => synth && !(synth as ToneDisposable).disposed)
         .forEach(synth => synth.dispose());
-      if (bassSynth.current && !(bassSynth.current as any).disposed) bassSynth.current.dispose();
+      if (bassSynth.current && !(bassSynth.current as ToneDisposable).disposed) bassSynth.current.dispose();
       if (bassVolumeNode.current && !bassVolumeNode.current.disposed) bassVolumeNode.current.dispose();
       if (accompanimentSequence.current) { accompanimentSequence.current.stop(0); accompanimentSequence.current.clear(); accompanimentSequence.current.dispose(); }
       if (aiBassPart.current) { aiBassPart.current.stop(0); aiBassPart.current.clear(); aiBassPart.current.dispose(); }
-      activePianoNotesByKey.current.clear();
+      activeNotesToClear.clear();
     };
   }, []);
 

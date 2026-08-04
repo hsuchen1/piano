@@ -133,8 +133,8 @@ const App: React.FC = () => {
     return chordProgression.map((chord, index) => ({ ...chord, originalIndex: index }));
   }, [chordProgression]);
 
-  const audio: UseAudioReturn = useAudio(
-    progressionWithIndices,
+  const audio: UseAudioReturn = useAudio({
+    progression: progressionWithIndices,
     customRhythms,
     accompanimentLayers,
     drumsEnabled,
@@ -146,12 +146,12 @@ const App: React.FC = () => {
     bassPattern,
     bassInstrument,
     aiBassEvents,
-    userPianoVolume,
-    setCurrentlyPlayingChordIndex,
-    setIsBeat,
-    setAccompanimentActiveNotes,
-    showAccompanimentNotes
-  );
+    initialUserPianoVolume: userPianoVolume,
+    showAccompanimentNotes,
+    onPlayingChordIndexChange: setCurrentlyPlayingChordIndex,
+    onBeat: setIsBeat,
+    setAccompanimentNotes: setAccompanimentActiveNotes,
+  });
   
   const handleStopAccompaniment = useCallback(() => {
       audio.stopAccompaniment();
@@ -213,6 +213,12 @@ const App: React.FC = () => {
     const indexToRemove = chordProgression.findIndex(chord => chord.id === idToRemove);
     if (indexToRemove === -1) return;
 
+    // Removing the last remaining chord leaves nothing to play, so stop here
+    // rather than letting useAudio discover the empty progression later.
+    if (chordProgression.length === 1 && audio.isAccompanimentPlaying) {
+      handleStopAccompaniment();
+    }
+
     setChordProgression(prev => prev.filter(c => c.id !== idToRemove));
     
     setCustomRhythms(prevRhythms => {
@@ -230,7 +236,7 @@ const App: React.FC = () => {
       newData.splice(indexToRemove, 1);
       return newData;
     });
-  }, [chordProgression]);
+  }, [chordProgression, audio.isAccompanimentPlaying, handleStopAccompaniment]);
 
   const handleClearProgression = useCallback(() => {
     if (audio.isAccompanimentPlaying) {
