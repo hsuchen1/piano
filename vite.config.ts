@@ -17,6 +17,20 @@ const base = process.env.NODE_ENV === 'production' ? `/${repositoryName}/` : '/'
 
 export default defineConfig({
   base: base,
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the two heavyweight dependencies out of the app chunk. They change
+        // far less often than application code, so a browser that has visited
+        // before keeps them cached across deploys instead of re-downloading
+        // everything because one component changed.
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          tone: ['tone'],
+        },
+      },
+    },
+  },
   test: {
     // Default to node because most tests are pure functions. Files that need a
     // DOM (localStorage) opt in with a `@vitest-environment jsdom` docblock;

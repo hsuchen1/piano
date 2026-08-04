@@ -1,4 +1,3 @@
-import { GoogleGenAI, Type } from '@google/genai';
 import {
   ChordType,
   type AiNoteEvent,
@@ -40,12 +39,35 @@ export function parseAiJson<T>(text: string | undefined): T {
   }
 }
 
+type GenAiModule = typeof import('@google/genai');
+type GenAiClient = InstanceType<GenAiModule['GoogleGenAI']>;
+/** The response-schema type enum, supplied to schema builders. */
+type SchemaTypes = GenAiModule['Type'];
+
+/**
+ * The SDK is loaded on demand rather than imported at the top of the file.
+ *
+ * It is one of the two largest dependencies in the bundle, and the AI features are
+ * entirely optional: a user who only plays the keyboard never needs it. A static
+ * import forced everyone to download it before the app could start.
+ *
+ * The promise is cached, so concurrent callers share one network request and the
+ * module is only evaluated once.
+ */
+let modulePromise: Promise<GenAiModule> | null = null;
+
+function loadGenAi(): Promise<GenAiModule> {
+  modulePromise ??= import('@google/genai');
+  return modulePromise;
+}
+
 // A client was constructed on every single request. Cache per key instead, and
 // rebuild only when the user changes their key.
-let cachedClient: { apiKey: string; client: GoogleGenAI } | null = null;
+let cachedClient: { apiKey: string; client: GenAiClient } | null = null;
 
-function getClient(apiKey: string): GoogleGenAI {
+async function getClient(apiKey: string): Promise<GenAiClient> {
   if (cachedClient?.apiKey !== apiKey) {
+    const { GoogleGenAI } = await loadGenAi();
     cachedClient = { apiKey, client: new GoogleGenAI({ apiKey }) };
   }
   return cachedClient.client;
@@ -60,7 +82,11 @@ interface JsonRequest {
   apiKey: string;
   contents: string;
   systemInstruction: string;
-  responseSchema: Record<string, unknown>;
+  /**
+   * Built lazily because the `Type` enum it needs comes from the dynamically
+   * imported SDK, so it cannot be referenced at module scope any more.
+   */
+  buildSchema: (Type: SchemaTypes) => Record<string, unknown>;
 }
 
 /** The single place that performs a structured-JSON request. */
@@ -68,15 +94,17 @@ async function requestJson<T>({
   apiKey,
   contents,
   systemInstruction,
-  responseSchema,
+  buildSchema,
 }: JsonRequest): Promise<T> {
-  const response = await getClient(apiKey).models.generateContent({
+  const [client, { Type }] = await Promise.all([getClient(apiKey), loadGenAi()]);
+
+  const response = await client.models.generateContent({
     model: GEMINI_MODEL,
     contents,
     config: {
       systemInstruction,
       responseMimeType: 'application/json',
-      responseSchema,
+      responseSchema: buildSchema(Type),
     },
   });
 
@@ -84,7 +112,7 @@ async function requestJson<T>({
 }
 
 /** Shared by chord generation and re-harmonisation, which had identical copies. */
-const CHORD_ARRAY_SCHEMA: Record<string, unknown> = {
+const buildChordArraySchema = (Type: SchemaTypes): Record<string, unknown> => ({
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
@@ -97,7 +125,7 @@ const CHORD_ARRAY_SCHEMA: Record<string, unknown> = {
     },
     required: ['root', 'type'],
   },
-};
+});
 
 /**
  * Turns the model's untyped chord list into domain objects, rejecting anything
@@ -149,7 +177,7 @@ export async function generateChordProgression(
     systemInstruction:
       "You are an expert music theorist and composer. Your task is to generate a common chord progression based on the user's description. Your response MUST be in JSON format. " +
       countInstruction,
-    responseSchema: CHORD_ARRAY_SCHEMA,
+    buildSchema: buildChordArraySchema,
   });
 
   return validateChordSuggestions(raw);
@@ -167,7 +195,7 @@ export async function reharmonizeProgression(
     contents: `Re-harmonize the following chord progression: [${current}] into a "${style}" style.`,
     systemInstruction:
       'You are a master music arranger. Your task is to re-harmonize a given chord progression into a new style specified by the user. You can use more advanced chords (e.g., sevenths, ninths, altered chords) and substitutions, but you must maintain the general harmonic flow and the same number of chords as the original. Your response MUST be a JSON array with the exact same structure and number of elements as the original progression.',
-    responseSchema: CHORD_ARRAY_SCHEMA,
+    buildSchema: buildChordArraySchema,
   });
 
   const chords = validateChordSuggestions(raw);
@@ -218,7 +246,7 @@ export async function chooseVoicings(
     contents: `Analyze this chord progression and determine the optimal inversion for each chord. Progression data with all possible voicings: ${JSON.stringify(voicingOptions)}`,
     systemInstruction:
       'You are a music arrangement expert specializing in voice leading. For each chord in the progression, you are given a list of possible voicings, each with an inversion number and the resulting MIDI-style note names (e.g., C4). Your task is to select one voicing (by its inversion number) for each chord. Your PRIMARY goal is to minimize melodic movement in the highest note between adjacent chords to create the smoothest possible voice leading. As a SECONDARY goal, if a chosen voicing results in most of its notes falling outside the B2 to C4 range, you should re-evaluate and select a different inversion that better fits this range, even if it slightly compromises the primary voice-leading goal. Your response MUST be a JSON array of numbers. The length of the array must be identical to the input progression\'s length. Each number represents the chosen inversion for the corresponding chord.',
-    responseSchema: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+    buildSchema: Type => ({ type: Type.ARRAY, items: { type: Type.INTEGER } }),
   });
 
   return validateInversions(raw, progression);
@@ -253,7 +281,7 @@ export async function generateBassline(
     apiKey,
     contents: `Create a bassline for the chord progression [${current}]. The user wants a style described as: "${style}".`,
     systemInstruction: `You are a professional bass player. Your task is to create a monophonic bassline for a given chord progression. The bassline should be musically interesting, fit the user's description, and stay within a typical bass range (E1 to G3). The response MUST be a JSON array of note events. Each event is an object with "note" (e.g., "C2"), "time" (in "measure:beat:subdivision" format, e.g., "0:0:0"), and "duration" (e.g., "4n", "8n."). The total duration should match the progression length (${progression.length} measures).`,
-    responseSchema: {
+    buildSchema: Type => ({
       type: Type.ARRAY,
       items: {
         type: Type.OBJECT,
@@ -264,7 +292,7 @@ export async function generateBassline(
         },
         required: ['note', 'time', 'duration'],
       },
-    },
+    }),
   });
 
   return validateBassEvents(raw);
@@ -276,19 +304,20 @@ export async function generateDrumPattern(
 ): Promise<CustomDrumChordPattern> {
   const instruments = DRUM_INSTRUMENT_OPTIONS.map(opt => opt.value);
 
-  const properties = instruments.reduce<Record<string, unknown>>((acc, value) => {
-    acc[value] = {
-      type: Type.ARRAY,
-      items: { type: Type.ARRAY, items: { type: Type.BOOLEAN } },
-    };
-    return acc;
-  }, {});
-
   const raw = await requestJson<Record<string, unknown>>({
     apiKey,
     contents: `User's request for a one-measure drum pattern: "${prompt}"`,
     systemInstruction: `You are an expert drum machine programmer. Your task is to generate a one-measure (16-step) drum pattern based on a user's text description. The response MUST be a JSON object. The keys of the object must be instrument names from the following list: [${instruments.join(', ')}]. The value for each key must be a 4x4 array of booleans, representing 4 beats, each with 4 subdivisions (16th notes). 'true' means a hit, 'false' means a rest.`,
-    responseSchema: { type: Type.OBJECT, properties },
+    buildSchema: Type => ({
+      type: Type.OBJECT,
+      properties: instruments.reduce<Record<string, unknown>>((acc, value) => {
+        acc[value] = {
+          type: Type.ARRAY,
+          items: { type: Type.ARRAY, items: { type: Type.BOOLEAN } },
+        };
+        return acc;
+      }, {}),
+    }),
   });
 
   return validateDrumPattern(raw, instruments);

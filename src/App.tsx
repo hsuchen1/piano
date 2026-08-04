@@ -4,7 +4,7 @@
 
 
 import React from 'react';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
@@ -12,7 +12,8 @@ import ChordSelector from './components/ChordSelector';
 import ChordProgressionEditor from './components/ChordProgressionEditor';
 import AccompanimentControls from './components/AccompanimentControls';
 import SavedProgressions from './components/SavedProgressions';
-import TutorialModal from './components/TutorialModal';
+// Only rendered once the user opens the tutorial, so it is fetched on demand.
+const TutorialModal = lazy(() => import('./components/TutorialModal'));
 import GeminiChordGenerator from './components/GeminiChordGenerator';
 import ApiSettings from './components/ApiSettings'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
@@ -528,7 +529,13 @@ const App: React.FC = () => {
 
   return (
     <>
-      <TutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
+      {/* No fallback: the modal is an overlay, so showing nothing for the moment
+          it takes to arrive is less jarring than a flash of placeholder. */}
+      {isTutorialOpen && (
+        <Suspense fallback={null}>
+          <TutorialModal isOpen onClose={() => setIsTutorialOpen(false)} />
+        </Suspense>
+      )}
       <div className="min-h-screen bg-gray-800 text-gray-100 selection:bg-purple-500 selection:text-white">
         <div className="container mx-auto p-2 sm:p-4 flex flex-col items-center space-y-4 sm:space-y-6">
           <header className="text-center my-3 sm:my-5">
