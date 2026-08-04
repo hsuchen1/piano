@@ -3,6 +3,7 @@ import React, {useState} from 'react';
 import type { ChordWithIndex } from '../types';
 import { DrumInstrument, CustomDrumProgressionData, CustomDrumChordPattern, GenerationState } from '../types';
 import { DRUM_INSTRUMENT_OPTIONS, NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT, createDefaultCustomDrumChordPattern } from '../constants';
+import AiPromptDialog from '../ui/AiPromptDialog';
 
 /**
  * Shared by the pinned instrument label and the spacer above it in the beat-number
@@ -47,47 +48,36 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
   isApiKeySet,
 }) => {
   const [editingAiForChordIndex, setEditingAiForChordIndex] = useState<number | null>(null);
-  const [aiPrompt, setAiPrompt] = useState('');
 
   if (!chordProgression || chordProgression.length === 0) {
     return (
-      <div className="p-3 my-2 text-sm text-center text-gray-400 bg-gray-500 rounded-md">
+      <div className="p-3 my-2 text-sm text-center text-gray-400 bg-surface-2 border border-surface-line rounded-md">
         請先在「和弦進行」中加入和弦以編輯自訂鼓組。
       </div>
     );
   }
 
-  const handleGenerateClick = () => {
-    if (aiPrompt.trim() && editingAiForChordIndex !== null) {
-      onGenerateDrumPattern(aiPrompt, editingAiForChordIndex);
-      setEditingAiForChordIndex(null);
-    }
-  };
-  
+  // Named chord being edited, resolved once instead of searching the progression
+  // twice inside the dialog's own markup as before.
+  const editingChord = chordProgression.find(c => c.originalIndex === editingAiForChordIndex);
+  const editingChordLabel = editingChord ? `${editingChord.root}${editingChord.type}` : '';
+
   const isGeneratingDrums = generationState.isLoading && generationState.type === 'drums';
   const canPerformAiAction = isApiKeySet;
 
   return (
     <>
       {editingAiForChordIndex !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setEditingAiForChordIndex(null)}>
-          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h4 className="text-lg font-bold text-red-400 mb-2">AI 鼓組生成</h4>
-            <p className="text-sm text-gray-400 mb-4">為 <span className="font-bold text-white">{chordProgression.find(c => c.originalIndex === editingAiForChordIndex)?.root}{chordProgression.find(c => c.originalIndex === editingAiForChordIndex)?.type}</span> 和弦描述您想要的鼓點。</p>
-            <textarea
-              rows={3}
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-red-500 focus:border-red-500 transition-colors placeholder-gray-500"
-              placeholder="例如：a simple rock beat, a fast complex breakbeat, a sparse hip-hop groove..."
-              aria-label="Drum pattern prompt"
-            />
-            <div className="flex justify-end space-x-3 mt-4">
-              <button onClick={() => {setEditingAiForChordIndex(null); setAiPrompt('');}} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md transition-colors">取消</button>
-              <button onClick={handleGenerateClick} disabled={!aiPrompt.trim()} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">生成</button>
-            </div>
-          </div>
-        </div>
+        <AiPromptDialog
+          title="AI 鼓組生成"
+          description={`為 ${editingChordLabel} 和弦描述您想要的鼓點。`}
+          placeholder="例如：a simple rock beat, a fast complex breakbeat, a sparse hip-hop groove..."
+          onSubmit={prompt => {
+            onGenerateDrumPattern(prompt, editingAiForChordIndex);
+            setEditingAiForChordIndex(null);
+          }}
+          onCancel={() => setEditingAiForChordIndex(null)}
+        />
       )}
 
       <div className="p-3 my-2 bg-surface-1 border border-surface-line rounded-md space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
@@ -130,7 +120,7 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() => { setAiPrompt(''); setEditingAiForChordIndex(chordItem.originalIndex); }}
+                    onClick={() => setEditingAiForChordIndex(chordItem.originalIndex)}
                     disabled={!canPerformAiAction || isGeneratingDrums}
                     className={`${CHORD_ACTION_BUTTON} bg-accent-drums hover:bg-red-700 focus-visible:ring-accent-drums`}
                     title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 生成此鼓點"}

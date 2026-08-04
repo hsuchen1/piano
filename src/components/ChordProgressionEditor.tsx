@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ChordDefinition } from '../types';
 import { CHORD_INTERVALS } from '../constants';
+import AiPromptDialog from '../ui/AiPromptDialog';
 
 interface ChordProgressionEditorProps {
   progression: ChordDefinition[];
@@ -89,7 +90,6 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   const draggedOverItemIndex = useRef<number | null>(null);
   const [dragIndicatorIndex, setDragIndicatorIndex] = useState<number | null>(null);
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
-  const [stylePrompt, setStylePrompt] = useState('');
 
   const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
     draggedItemIndex.current = index;
@@ -145,36 +145,22 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
     return null;
   };
 
-  const handleStyleSubmit = () => {
-    if (stylePrompt.trim()) {
-      onStyleTransfer(stylePrompt.trim());
-      setIsStyleModalOpen(false);
-    }
-  };
-
   const canPerformAiAction = isApiKeySet && progression.length > 0;
 
   return (
     <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md h-full flex flex-col">
       {isStyleModalOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setIsStyleModalOpen(false)}>
-          <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h4 className="text-xl font-bold text-purple-300 mb-3">AI 風格轉換</h4>
-            <p className="text-sm text-gray-400 mb-4">輸入您想要的音樂風格，AI 將會重新詮釋您目前的和弦進行。</p>
-            <textarea
-              rows={3}
-              value={stylePrompt}
-              onChange={(e) => setStylePrompt(e.target.value)}
-              className="w-full p-2.5 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
-              placeholder="例如：smooth jazz trio, epic cinematic score, 8-bit video game music..."
-              aria-label="Style prompt"
-            />
-            <div className="flex justify-end space-x-3 mt-4">
-              <button onClick={() => setIsStyleModalOpen(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md transition-colors">取消</button>
-              <button onClick={handleStyleSubmit} disabled={!stylePrompt.trim()} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">轉換</button>
-            </div>
-          </div>
-        </div>
+        <AiPromptDialog
+          title="AI 風格轉換"
+          description="輸入您想要的音樂風格，AI 將會重新詮釋您目前的和弦進行。"
+          placeholder="例如：smooth jazz trio, epic cinematic score, 8-bit video game music..."
+          submitLabel="轉換"
+          onSubmit={prompt => {
+            onStyleTransfer(prompt);
+            setIsStyleModalOpen(false);
+          }}
+          onCancel={() => setIsStyleModalOpen(false)}
+        />
       )}
       {/* Wraps on narrow screens instead of squeezing four buttons onto one line. */}
       <div className="flex flex-wrap justify-between items-center gap-2 mb-3">

@@ -7,7 +7,19 @@ interface ModalProps {
   footer: React.ReactNode;
   /** Escape and backdrop clicks route here, so it should be the cancelling path. */
   onDismiss: () => void;
+  /** `lg` is for long-form content such as the tutorial. */
+  size?: 'md' | 'lg';
+  /**
+   * Caps the body height and scrolls it, keeping the title and footer in place.
+   * Needed for content taller than the viewport.
+   */
+  scrollBody?: boolean;
 }
+
+const SIZE_CLASS: Record<'md' | 'lg', string> = {
+  md: 'max-w-md',
+  lg: 'max-w-3xl',
+};
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -21,7 +33,14 @@ const FOCUSABLE =
  * keeping Tab inside the dialog, Escape to cancel, and returning focus to whatever
  * was focused before.
  */
-const Modal: React.FC<ModalProps> = ({ title, children, footer, onDismiss }) => {
+const Modal: React.FC<ModalProps> = ({
+  title,
+  children,
+  footer,
+  onDismiss,
+  size = 'md',
+  scrollBody = false,
+}) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = React.useId();
 
@@ -74,14 +93,24 @@ const Modal: React.FC<ModalProps> = ({ title, children, footer, onDismiss }) => 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md space-y-4"
+        className={`bg-surface-1 border border-surface-line rounded-lg shadow-2xl p-6 w-full flex flex-col max-h-[90vh] ${SIZE_CLASS[size]}`}
         onClick={event => event.stopPropagation()}
       >
-        <h2 id={titleId} className="text-lg font-bold text-gray-100">
+        <h2 id={titleId} className="text-lg font-bold text-gray-100 shrink-0">
           {title}
         </h2>
-        {children}
-        <div className="flex justify-end gap-3 pt-1">{footer}</div>
+
+        <div
+          className={
+            scrollBody
+              ? 'flex-grow overflow-y-auto my-4 space-y-4 pr-1 scrollbar-thin [--sb-track:theme(colors.surface.1)]'
+              : 'my-4 space-y-4'
+          }
+        >
+          {children}
+        </div>
+
+        <div className="flex justify-end gap-3 shrink-0">{footer}</div>
       </div>
     </div>
   );

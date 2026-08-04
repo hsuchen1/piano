@@ -5,6 +5,7 @@ import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, Drum
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
 import CustomRhythmEditor from './CustomRhythmEditor';
 import CustomDrumEditor from './CustomDrumEditor';
+import AiPromptDialog from '../ui/AiPromptDialog';
 import type { ChordWithIndex } from '../types';
 
 type Tab = 'chords' | 'drums' | 'bass' | 'effects';
@@ -238,39 +239,23 @@ interface BassGuitarPanelProps {
 
 const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassInstrument, onBassInstrumentChange, bassPattern, onBassPatternChange, onGenerateAIBassline, chordProgressionEmpty, isApiKeySet, generationState }) => {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-
-  const handleGenerate = () => {
-    if (aiPrompt.trim()) {
-      onGenerateAIBassline(aiPrompt);
-      setIsAiModalOpen(false);
-    }
-  };
 
   const isGeneratingBass = generationState.isLoading && generationState.type === 'bass';
   const canPerformAiAction = isApiKeySet && !chordProgressionEmpty;
-  
+
   return (
     <>
       {isAiModalOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setIsAiModalOpen(false)}>
-          <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h4 className="text-xl font-bold text-yellow-300 mb-3">AI 貝斯線生成</h4>
-            <p className="text-sm text-gray-400 mb-4">輸入您想要的貝斯線風格，AI 將會為您目前的和弦進行創作一段貝斯線。</p>
-            <textarea
-              rows={3}
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              className="w-full p-2.5 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500 transition-colors placeholder-gray-500"
-              placeholder="例如：a funky slap bassline, a simple melodic walking bass, a driving rock bass..."
-              aria-label="Bassline style prompt"
-            />
-            <div className="flex justify-end space-x-3 mt-4">
-              <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md transition-colors">取消</button>
-              <button onClick={handleGenerate} disabled={!aiPrompt.trim()} className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-md transition-colors disabled:bg-yellow-800 disabled:cursor-not-allowed">生成</button>
-            </div>
-          </div>
-        </div>
+        <AiPromptDialog
+          title="AI 貝斯線生成"
+          description="輸入您想要的貝斯線風格，AI 將會為您目前的和弦進行創作一段貝斯線。"
+          placeholder="例如：a funky slap bassline, a simple melodic walking bass, a driving rock bass..."
+          onSubmit={prompt => {
+            onGenerateAIBassline(prompt);
+            setIsAiModalOpen(false);
+          }}
+          onCancel={() => setIsAiModalOpen(false)}
+        />
       )}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -299,7 +284,7 @@ const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onB
           {bassPattern === BassPattern.AiGenerated && (
               <div className="p-3 bg-gray-500 rounded-md mt-2">
                 <button
-                  onClick={() => { setAiPrompt(''); setIsAiModalOpen(true); }}
+                  onClick={() => setIsAiModalOpen(true)}
                   disabled={!canPerformAiAction || isGeneratingBass}
                   className="w-full py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold rounded-md transition-colors disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
                   title={!isApiKeySet ? "請先設定 API 金鑰" : (chordProgressionEmpty ? "請先新增和弦" : "")}

@@ -1,5 +1,6 @@
 
 import React, { FC } from 'react';
+import Modal from '../ui/Modal';
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -23,39 +24,23 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
     return null;
   }
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center p-4 transition-opacity duration-300"
-      onClick={handleBackdropClick}
-      aria-modal="true"
-      role="dialog"
+    <Modal
+      title="使用教學"
+      size="lg"
+      scrollBody
+      onDismiss={onClose}
+      footer={
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-6 min-h-tap inline-flex items-center bg-accent-chord hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-chord"
+        >
+          關閉
+        </button>
+      }
     >
-      <div className="bg-gray-700 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <header className="flex justify-between items-center p-4 border-b border-gray-600">
-          <h2 className="text-2xl font-bold text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 inline-block mr-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            使用教學
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-full transition-colors"
-            aria-label="關閉教學"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
-        
-        <main className="p-6 overflow-y-auto space-y-4 scrollbar-thin">
+      <div className="space-y-4">
           <div>
             <h2 className="text-2xl font-semibold text-purple-300">歡迎來到互動鋼琴工作室！</h2>
             <p className="text-gray-300 mt-1">釋放您的音樂創意！在這裡，您不僅可以自由彈奏、編曲，更能讓 AI 成為您的智慧編曲夥伴，輕鬆打造專屬伴奏。</p>
@@ -176,22 +161,12 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               </li>
           </ul>
 
-          <div className="text-center pt-4 mt-4 border-t border-gray-600">
-            <p className="text-lg font-semibold text-purple-300">開始探索吧！</p>
+          <div className="text-center pt-4 mt-4 border-t border-surface-line">
+            <p className="text-lg font-semibold text-accent-ai">開始探索吧！</p>
             <p className="text-gray-300">結合不同的樂器、節奏和效果，創造出屬於您獨一無二的音樂！</p>
           </div>
-        </main>
-
-        <footer className="p-4 text-center">
-            <button
-                onClick={onClose}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-700"
-            >
-                關閉
-            </button>
-        </footer>
       </div>
-    </div>
+    </Modal>
   );
 };
 
