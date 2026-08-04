@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import {
     AccompanimentInstrument, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
@@ -764,9 +764,13 @@ export const useAudio = ({
     };
   }, []);
 
-  return {
+  // Memoised because App feeds this object into useCallback and useEffect dependency
+  // arrays. Returning a fresh literal made `audio` a new reference on every render,
+  // which invalidated every one of those callbacks and, in the case of the global
+  // keyboard listeners, tore them down and re-attached them on each render.
+  return useMemo<UseAudioReturn>(() => ({
     attackPianoNote, releasePianoNote, startAccompaniment, stopAccompaniment,
-    setAccompanimentBPM, 
+    setAccompanimentBPM,
     setUserPianoInstrument, setUserPianoVolume, setTransposition,
     currentTransposition, isAccompanimentPlaying, currentBPM, currentUserPianoVolume,
     currentUserPianoInstrument,
@@ -776,5 +780,15 @@ export const useAudio = ({
     setDrumsEnabled, setDrumVolume, setDrumPattern,
     // Bass setters
     setBassEnabled, setBassVolume, setBassPattern, setBassInstrument,
-  };
+  }), [
+    attackPianoNote, releasePianoNote, startAccompaniment, stopAccompaniment,
+    setAccompanimentBPM,
+    setUserPianoInstrument, setUserPianoVolume, setTransposition,
+    currentTransposition, isAccompanimentPlaying, currentBPM, currentUserPianoVolume,
+    currentUserPianoInstrument,
+    isAudioReady, isPianoLoading,
+    setReverbLevel, setDelayLevel, setSwing,
+    setDrumsEnabled, setDrumVolume, setDrumPattern,
+    setBassEnabled, setBassVolume, setBassPattern, setBassInstrument,
+  ]);
 };

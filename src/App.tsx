@@ -4,7 +4,7 @@
 
 
 import React from 'react';
-import { useState, useCallback, useEffect, useId, useMemo } from 'react';
+import { useState, useCallback, useEffect, useId, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 import PianoKeyboard from './components/PianoKeyboard';
@@ -59,7 +59,11 @@ function parseAiJson<T>(text: string | undefined): T {
 
 const App: React.FC = () => {
   const [chordProgression, setChordProgression] = useState<ChordDefinition[]>([]);
+  // `pressedComputerKeys` drives the highlight on the on-screen keyboard, while
+  // `heldComputerKeys` is the mutable set the key handlers read to de-duplicate
+  // auto-repeat. Keeping them separate lets the listener effect stay mounted.
   const [pressedComputerKeys, setPressedComputerKeys] = useState<Set<string>>(new Set());
+  const heldComputerKeys = useRef<Set<string>>(new Set());
   
   // State for custom rhythms per layer
   const [customRhythms, setCustomRhythms] = useState<Record<string, BeatDuration[][]>>({});
@@ -811,10 +815,15 @@ const App: React.FC = () => {
         event.preventDefault();
         const { note, octave } = noteMapping;
         const noteFullName = `${note}${octave}`;
-        
-        if (!pressedComputerKeys.has(noteFullName)) {
+
+        // The ref, not the state, is the source of truth for which keys are
+        // physically held. Reading the state Set here would mean listing it as a
+        // dependency, and since it changes on every keystroke the listeners would
+        // be detached and reattached mid-performance.
+        if (!heldComputerKeys.current.has(noteFullName)) {
+            heldComputerKeys.current.add(noteFullName);
             handleNoteAttack(note, octave, true);
-            setPressedComputerKeys(prev => new Set(prev).add(noteFullName));
+            setPressedComputerKeys(new Set(heldComputerKeys.current));
         }
       }
     };
@@ -831,23 +840,41 @@ const App: React.FC = () => {
         const { note, octave } = noteMapping;
         const noteFullName = `${note}${octave}`;
         
+        heldComputerKeys.current.delete(noteFullName);
         handleNoteRelease(note, octave, true);
-        setPressedComputerKeys(prev => {
-          const next = new Set(prev);
-          next.delete(noteFullName);
-          return next;
-        });
+        setPressedComputerKeys(new Set(heldComputerKeys.current));
       }
+    };
+
+    // If the window loses focus while a key is held, the matching keyup is
+    // delivered to whatever took focus, so the note would sustain forever and stay
+    // highlighted. Release everything still held when we stop being the active
+    // window. KEY_MAPPING is keyed by keyboard character, so walk it to recover
+    // the note and octave for each stuck entry.
+    const releaseAllHeldKeys = () => {
+      if (heldComputerKeys.current.size === 0) return;
+
+      for (const mapping of Object.values(KEY_MAPPING)) {
+        const noteFullName = `${mapping.note}${mapping.octave}`;
+        if (heldComputerKeys.current.has(noteFullName)) {
+          handleNoteRelease(mapping.note, mapping.octave, true);
+        }
+      }
+
+      heldComputerKeys.current.clear();
+      setPressedComputerKeys(new Set());
     };
 
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseAllHeldKeys);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseAllHeldKeys);
     };
-  }, [audio, handleNoteAttack, handleNoteRelease, pressedComputerKeys, handleToggleAccompaniment]);
+  }, [audio.isPianoLoading, handleNoteAttack, handleNoteRelease, handleToggleAccompaniment]);
 
 
   return (
