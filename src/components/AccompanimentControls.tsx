@@ -5,7 +5,7 @@ import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, Drum
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
 import CustomRhythmEditor from './CustomRhythmEditor';
 import CustomDrumEditor from './CustomDrumEditor';
-import type { ChordWithIndex } from '../App';
+import type { ChordWithIndex } from '../types';
 
 type Tab = 'chords' | 'drums' | 'bass' | 'effects';
 

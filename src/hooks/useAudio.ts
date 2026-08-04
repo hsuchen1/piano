@@ -5,7 +5,7 @@ import * as Tone from 'tone';
 import {
     AccompanimentInstrument, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
     DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumProgressionData, CustomDrumChordPattern,
-    AccompanimentLayer, AiNoteEvent
+    AccompanimentLayer, AiNoteEvent, ChordWithIndex
 } from '../types';
 import {
   getNoteFullName, DEFAULT_BPM,
@@ -18,7 +18,6 @@ import {
   ACCOMPANIMENT_GENERAL_SYNTH_CONFIG, ACCOMPANIMENT_TRIANGLE_SYNTH_CONFIG, ACCOMPANIMENT_BASE_OCTAVE
 } from '../constants';
 import { getChordNotes, getBassNotesForPattern } from '../utils';
-import type { ChordWithIndex } from '../App';
 import type { FMSynthOptions, AMSynthOptions } from 'tone';
 
 const ToneRef = Tone;

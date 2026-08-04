@@ -43,6 +43,18 @@ export interface ChordDefinition {
   inversion: number; // 0: root, 1: 1st, 2: 2nd, etc.
 }
 
+/**
+ * A chord tagged with its position in the progression.
+ *
+ * The sequencer and the per-chord editors need the index to look up that chord's
+ * drum grid and rhythm row, which are stored as parallel arrays. This lived in
+ * App.tsx, which meant useAudio and three components imported a type from the
+ * component that consumes them.
+ */
+export interface ChordWithIndex extends ChordDefinition {
+  originalIndex: number;
+}
+
 /** Which AI feature is currently running. */
 export type GenerationKind = 'chords' | 'style' | 'drums' | 'voicing' | 'bass';
 

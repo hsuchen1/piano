@@ -1,6 +1,6 @@
 
 import React, {useState} from 'react';
-import type { ChordWithIndex } from '../App';
+import type { ChordWithIndex } from '../types';
 import { DrumInstrument, CustomDrumProgressionData, CustomDrumChordPattern, GenerationState } from '../types';
 import { DRUM_INSTRUMENT_OPTIONS, NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT, createDefaultCustomDrumChordPattern } from '../constants';
 

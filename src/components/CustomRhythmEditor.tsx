@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ChordWithIndex } from '../App';
+import type { ChordWithIndex } from '../types';
 import { BeatDuration } from '../types';
 import { BEAT_DURATION_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION } from '../constants';
 

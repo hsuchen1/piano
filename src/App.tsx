@@ -4,7 +4,7 @@
 
 
 import React from 'react';
-import { useState, useCallback, useEffect, useId, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
@@ -22,46 +22,30 @@ import {
   generateDrumPattern, reharmonizeProgression
 } from './services/gemini';
 import {
-  ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, SAVED_PROGRESSION_SCHEMA_VERSION, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent, GenerationKind
+  NoteName, UserPianoInstrument,
+  SavedProgressionEntry, SAVED_PROGRESSION_SCHEMA_VERSION, DrumPattern, BassPattern, BassInstrument, AiNoteEvent, GenerationKind
 } from './types';
 import {
-  KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION,
+  KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, ACCOMPANIMENT_BASE_OCTAVE,
+  DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, ACCOMPANIMENT_BASE_OCTAVE,
   DEFAULT_BPM, DEFAULT_TRANSPOSE_SEMITONES, DEFAULT_USER_PIANO_INSTRUMENT,
   DEFAULT_REVERB_LEVEL, DEFAULT_DELAY_LEVEL, DEFAULT_SWING
 } from './constants';
 import {
   getVoicingOptionsForChord,
-  createLayerId, loadSavedProgressions, persistSavedProgressions
+  loadSavedProgressions, persistSavedProgressions
 } from './utils';
+import { useChordProgression } from './hooks/useChordProgression';
 
-
-export interface ChordWithIndex extends ChordDefinition {
-  originalIndex: number;
-}
 
 const App: React.FC = () => {
-  const [chordProgression, setChordProgression] = useState<ChordDefinition[]>([]);
   // `pressedComputerKeys` drives the highlight on the on-screen keyboard, while
   // `heldComputerKeys` is the mutable set the key handlers read to de-duplicate
   // auto-repeat. Keeping them separate lets the listener effect stay mounted.
   const [pressedComputerKeys, setPressedComputerKeys] = useState<Set<string>>(new Set());
   const heldComputerKeys = useRef<Set<string>>(new Set());
-  
-  // State for custom rhythms per layer
-  const [customRhythms, setCustomRhythms] = useState<Record<string, BeatDuration[][]>>({});
-
-  // Accompaniment Layers State.
-  // The first layer's id comes from useId() rather than Date.now(): it has to be
-  // created during the initial render, and calling an impure function there gives
-  // an id that changes whenever the component happens to re-render.
-  const initialLayerId = useId();
-  const [accompanimentLayers, setAccompanimentLayers] = useState<AccompanimentLayer[]>(
-    () => [{ id: initialLayerId, ...DEFAULT_ACCOMPANIMENT_LAYER }]
-  );
 
   // Main piano state
   const [userPianoVolume, setUserPianoVolume] = useState<number>(DEFAULT_USER_PIANO_VOLUME);
@@ -70,9 +54,6 @@ const App: React.FC = () => {
   const [drumsEnabled, setDrumsEnabled] = useState<boolean>(DEFAULT_DRUMS_ENABLED);
   const [drumVolume, setDrumVolume] = useState<number>(DEFAULT_DRUM_VOLUME);
   const [drumPattern, setDrumPattern] = useState<DrumPattern>(DEFAULT_DRUM_PATTERN);
-  const [customDrumData, setCustomDrumData] = useState<CustomDrumProgressionData>([]);
-  const [drumPatternClipboard, setDrumPatternClipboard] = useState<{ pattern: CustomDrumChordPattern, sourceIndex: number } | null>(null);
-
 
   // Bass State
   const [bassEnabled, setBassEnabled] = useState<boolean>(DEFAULT_BASS_ENABLED);
@@ -115,9 +96,46 @@ const App: React.FC = () => {
     persistSavedProgressions(savedProgressions);
   }, [savedProgressions]);
 
-  const progressionWithIndices: ChordWithIndex[] = useMemo(() => {
-    return chordProgression.map((chord, index) => ({ ...chord, originalIndex: index }));
-  }, [chordProgression]);
+  // useAudio needs the progression, and the progression hook needs to be able to
+  // stop playback. Break that cycle by routing the stop through a ref that is
+  // populated once useAudio has run.
+  const audioRef = useRef<UseAudioReturn | null>(null);
+
+  const stopPlayback = useCallback(() => {
+    audioRef.current?.stopAccompaniment();
+    setCurrentlyPlayingChordIndex(null);
+  }, []);
+
+  const clearAiBass = useCallback(() => {
+    setAiBassEvents(null);
+    setBassPattern(DEFAULT_BASS_PATTERN);
+  }, []);
+
+  // Owns the chords plus the drum grids and rhythm grids that must stay aligned
+  // with them. See useChordProgression for why those three live together.
+  const {
+    progression: chordProgression,
+    progressionWithIndices,
+    customRhythms,
+    customDrumData,
+    accompanimentLayers,
+    drumPatternClipboard,
+    addChord: handleAddChord,
+    removeChord: handleRemoveChord,
+    clearProgression: handleClearProgression,
+    reorderProgression: handleReorderProgression,
+    updateChordInversion: handleUpdateChordInversion,
+    replaceProgression,
+    restoreProgression,
+    updateCustomRhythmBeat: handleUpdateCustomRhythmBeat,
+    updateCustomDrumCell: handleUpdateCustomDrumCell,
+    setCustomDrumPatternForChord: handleSetCustomDrumPatternForChord,
+    copyDrumPattern: handleCopyDrumPattern,
+    pasteDrumPattern: handlePasteDrumPattern,
+    addAccompanimentLayer: handleAddAccompanimentLayer,
+    removeAccompanimentLayer: handleRemoveAccompanimentLayer,
+    updateAccompanimentLayer: handleUpdateAccompanimentLayer,
+  } = useChordProgression({ stopPlayback, onProgressionReplaced: clearAiBass });
 
   const audio: UseAudioReturn = useAudio({
     progression: progressionWithIndices,
@@ -139,10 +157,12 @@ const App: React.FC = () => {
     setAccompanimentNotes: setAccompanimentActiveNotes,
   });
   
-  const handleStopAccompaniment = useCallback(() => {
-      audio.stopAccompaniment();
-      setCurrentlyPlayingChordIndex(null);
+  // Populate the ref the progression hook stops playback through.
+  useEffect(() => {
+    audioRef.current = audio;
   }, [audio]);
+
+  const handleStopAccompaniment = stopPlayback;
 
   const handleToggleAccompaniment = useCallback(() => {
     if (audio.isAccompanimentPlaying) {
@@ -182,153 +202,6 @@ const App: React.FC = () => {
     setSwing(amount);
     audio.setSwing(amount);
   }, [audio]);
-
-  const handleAddChord = useCallback((chord: ChordDefinition) => {
-    setChordProgression(prev => [...prev, chord]);
-    setCustomRhythms(prevRhythms => {
-      const newRhythms = { ...prevRhythms };
-      for (const layerId in newRhythms) {
-        newRhythms[layerId] = [...newRhythms[layerId], Array(4).fill(DEFAULT_CUSTOM_BEAT_DURATION)];
-      }
-      return newRhythms;
-    });
-    setCustomDrumData(prev => [...prev, createDefaultCustomDrumChordPattern()]);
-  }, []);
-
-  const handleRemoveChord = useCallback((idToRemove: string) => {
-    const indexToRemove = chordProgression.findIndex(chord => chord.id === idToRemove);
-    if (indexToRemove === -1) return;
-
-    // Removing the last remaining chord leaves nothing to play, so stop here
-    // rather than letting useAudio discover the empty progression later.
-    if (chordProgression.length === 1 && audio.isAccompanimentPlaying) {
-      handleStopAccompaniment();
-    }
-
-    setChordProgression(prev => prev.filter(c => c.id !== idToRemove));
-    
-    setCustomRhythms(prevRhythms => {
-      const newRhythms = { ...prevRhythms };
-      for (const layerId in newRhythms) {
-        const newLayerRhythm = [...newRhythms[layerId]];
-        newLayerRhythm.splice(indexToRemove, 1);
-        newRhythms[layerId] = newLayerRhythm;
-      }
-      return newRhythms;
-    });
-    
-    setCustomDrumData(prev => {
-      const newData = [...prev];
-      newData.splice(indexToRemove, 1);
-      return newData;
-    });
-  }, [chordProgression, audio.isAccompanimentPlaying, handleStopAccompaniment]);
-
-  const handleClearProgression = useCallback(() => {
-    if (audio.isAccompanimentPlaying) {
-      handleStopAccompaniment();
-    }
-    setChordProgression([]);
-    setCustomRhythms({});
-    setCustomDrumData([]);
-    setDrumPatternClipboard(null);
-    setAiBassEvents(null);
-  }, [audio, handleStopAccompaniment]);
-
-  const handleUpdateChordInversion = useCallback((idToUpdate: string, inversion: number) => {
-    setChordProgression(prev => prev.map(chord =>
-      chord.id === idToUpdate ? { ...chord, inversion } : chord
-    ));
-  }, []);
-
-  const handleUpdateCustomRhythmBeat = useCallback((layerId: string, chordIndex: number, beatIndex: number, newDuration: BeatDuration) => {
-    setCustomRhythms(prevRhythms => {
-      const newRhythms = { ...prevRhythms };
-      const layerRhythm = newRhythms[layerId];
-      if (layerRhythm) {
-        const newLayerRhythm = layerRhythm.map((chordBeats, cIndex) => {
-          if (cIndex === chordIndex) {
-            const newBeats = [...chordBeats];
-            newBeats[beatIndex] = newDuration;
-            return newBeats;
-          }
-          return chordBeats;
-        });
-        newRhythms[layerId] = newLayerRhythm;
-      }
-      return newRhythms;
-    });
-  }, []);
-
-  const handleUpdateCustomDrumCell = useCallback((chordOriginalIndex: number, instrument: DrumInstrument, beatIndex: number, subdivisionIndex: number, isActive: boolean) => {
-    setCustomDrumData(prevData => {
-        const newData = [...prevData];
-        if (!newData[chordOriginalIndex]) {
-            newData[chordOriginalIndex] = createDefaultCustomDrumChordPattern();
-        }
-        const chordPattern = { ...newData[chordOriginalIndex] };
-        if (!chordPattern[instrument]) {
-            chordPattern[instrument] = Array(4).fill(null).map(() => Array(4).fill(false));
-        }
-        const instrumentPattern = chordPattern[instrument]!.map(beat => [...beat]); 
-        instrumentPattern[beatIndex][subdivisionIndex] = isActive;
-        chordPattern[instrument] = instrumentPattern;
-        newData[chordOriginalIndex] = chordPattern;
-        return newData;
-    });
-  }, []);
-
-  // --- Accompaniment Layer Handlers ---
-  const handleAddAccompanimentLayer = useCallback(() => {
-      setAccompanimentLayers(prev => [
-          ...prev,
-          { id: createLayerId(), ...DEFAULT_ACCOMPANIMENT_LAYER }
-      ]);
-  }, []);
-
-  const handleRemoveAccompanimentLayer = useCallback((idToRemove: string) => {
-      setAccompanimentLayers(prev => prev.filter(layer => layer.id !== idToRemove));
-      setCustomRhythms(prev => {
-        if (prev[idToRemove]) {
-          const newRhythms = { ...prev };
-          delete newRhythms[idToRemove];
-          return newRhythms;
-        }
-        return prev;
-      });
-  }, []);
-
-  const handleUpdateAccompanimentLayer = useCallback(<K extends keyof AccompanimentLayer>(
-      idToUpdate: string,
-      field: K,
-      value: AccompanimentLayer[K]
-  ) => {
-      setAccompanimentLayers(prev => prev.map(layer =>
-          layer.id === idToUpdate ? { ...layer, [field]: value } : layer
-      ));
-
-      if (field === 'rhythmPattern') {
-        if (value === AccompanimentRhythmPattern.Custom) {
-          setCustomRhythms(prev => {
-            if (!prev[idToUpdate]) {
-              const newProgressionData = Array(chordProgression.length).fill(null).map(() => Array(4).fill(DEFAULT_CUSTOM_BEAT_DURATION));
-              return { ...prev, [idToUpdate]: newProgressionData };
-            }
-            return prev;
-          });
-        } else {
-          setCustomRhythms(prev => {
-            if (prev[idToUpdate]) {
-              const newRhythms = { ...prev };
-              delete newRhythms[idToUpdate];
-              return newRhythms;
-            }
-            return prev;
-          });
-        }
-      }
-  }, [chordProgression.length]);
-
 
   const handleSaveCurrentProgression = useCallback(() => {
     if (chordProgression.length === 0) {
@@ -380,21 +253,14 @@ const App: React.FC = () => {
       return;
     }
 
-    if (audio.isAccompanimentPlaying) {
-      handleStopAccompaniment();
-    }
-
     // Entries are normalised by loadSavedProgressions() when they are read, so
     // every field below is already migrated and defaulted. This path used to
     // repeat the migration inline, with subtly different fallbacks.
-    setChordProgression(savedEntry.progression);
-    setAccompanimentLayers(savedEntry.accompanimentLayers);
-    setCustomRhythms(savedEntry.customRhythms ?? {});
+    restoreProgression(savedEntry);
 
     setDrumsEnabled(savedEntry.drumsEnabled ?? DEFAULT_DRUMS_ENABLED);
     setDrumVolume(savedEntry.drumVolume ?? DEFAULT_DRUM_VOLUME);
     setDrumPattern(savedEntry.drumPattern ?? DEFAULT_DRUM_PATTERN);
-    setCustomDrumData(savedEntry.customDrumData ?? []);
 
     setBassEnabled(savedEntry.bassEnabled ?? DEFAULT_BASS_ENABLED);
     setBassVolume(savedEntry.bassVolume ?? DEFAULT_BASS_VOLUME);
@@ -424,9 +290,8 @@ const App: React.FC = () => {
     setSwing(restoredSwing);
     audio.setSwing(restoredSwing);
 
-    setDrumPatternClipboard(null);
     alert(`和弦進行 "${name}" 已載入！`);
-  }, [savedProgressions, audio, handleStopAccompaniment]);
+  }, [savedProgressions, audio, restoreProgression]);
 
   const handleDeleteProgression = useCallback((name: string) => {
     if (window.confirm(`確定要刪除和弦進行 "${name}" 嗎？`)) {
@@ -439,31 +304,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleReorderProgression = useCallback((sourceIndex: number, destinationIndex: number) => {
-    setChordProgression(prevProgression => {
-      const newProgression = Array.from(prevProgression);
-      const [movedItem] = newProgression.splice(sourceIndex, 1);
-      newProgression.splice(destinationIndex, 0, movedItem);
-      return newProgression;
-    });
-    setCustomRhythms(prevRhythms => {
-      const newRhythms = { ...prevRhythms };
-      for (const layerId in newRhythms) {
-        const layerData = Array.from(newRhythms[layerId]);
-        const [movedItem] = layerData.splice(sourceIndex, 1);
-        layerData.splice(destinationIndex, 0, movedItem);
-        newRhythms[layerId] = layerData;
-      }
-      return newRhythms;
-    });
-    setCustomDrumData(prevCustomDrumData => {
-      const newCustomDrumData = Array.from(prevCustomDrumData);
-      const [movedDrumPattern] = newCustomDrumData.splice(sourceIndex, 1);
-      newCustomDrumData.splice(destinationIndex, 0, movedDrumPattern);
-      return newCustomDrumData;
-    });
-  }, []);
-  
   const handleNoteAttack = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
     if (audio.isPianoLoading) return;
     audio.attackPianoNote(noteName, octave, isComputerKey);
@@ -479,17 +319,11 @@ const App: React.FC = () => {
   };
   
   /**
-   * Applies an AI-produced progression. Validation now happens in the gemini
-   * service, so this only deals with the state transition.
+   * Applies an AI-produced progression. Validation happens in the gemini service
+   * and the parallel-array bookkeeping in useChordProgression, so this is just an
+   * alias kept for readability at the call sites.
    */
-  const applyGeneratedProgression = useCallback((newProgression: ChordDefinition[]) => {
-      if (audio.isAccompanimentPlaying) handleStopAccompaniment();
-      setChordProgression(newProgression);
-      setCustomRhythms({});
-      setCustomDrumData(newProgression.map(() => createDefaultCustomDrumChordPattern()));
-      setAiBassEvents(null); // Reset AI bass on new progression
-      setBassPattern(DEFAULT_BASS_PATTERN);
-  }, [audio.isAccompanimentPlaying, handleStopAccompaniment]);
+  const applyGeneratedProgression = replaceProgression;
 
   /** Every AI feature needs a key; report it the same way for all of them. */
   const requireApiKey = useCallback((kind: GenerationKind): string | null => {
@@ -541,11 +375,12 @@ const App: React.FC = () => {
     );
     if (!inversions) return;
 
-    setChordProgression(prev => prev.map((chord, index) => ({
-      ...chord,
-      inversion: inversions[index],
-    })));
-  }, [chordProgression, requireApiKey, run]);
+    // Apply each chosen inversion through the progression hook so the chords stay
+    // the single source of truth.
+    chordProgression.forEach((chord, index) => {
+      handleUpdateChordInversion(chord.id, inversions[index]);
+    });
+  }, [chordProgression, requireApiKey, run, handleUpdateChordInversion]);
 
   const handleGenerateAIBassline = useCallback(async (prompt: string) => {
     if (chordProgression.length === 0) return;
@@ -559,41 +394,6 @@ const App: React.FC = () => {
     if (events) setAiBassEvents(events);
   }, [chordProgression, requireApiKey, run]);
 
-
-  const handleSetCustomDrumPatternForChord = useCallback((chordOriginalIndex: number, newPattern: CustomDrumChordPattern) => {
-    setCustomDrumData(prevData => {
-      const newData = [...prevData];
-      const validatedPattern = createDefaultCustomDrumChordPattern();
-      for (const key of DRUM_INSTRUMENT_OPTIONS.map(opt => opt.value)) {
-        if (newPattern[key as DrumInstrument]) {
-            validatedPattern[key as DrumInstrument] = newPattern[key as DrumInstrument];
-        }
-      }
-      newData[chordOriginalIndex] = validatedPattern;
-      return newData;
-    });
-  }, []);
-
-  const handleCopyDrumPattern = useCallback((chordOriginalIndex: number) => {
-    setDrumPatternClipboard(prev => {
-      // If clicking the same copied chord again, clear clipboard
-      if (prev && prev.sourceIndex === chordOriginalIndex) {
-        return null;
-      }
-      // Otherwise, copy the new pattern
-      const patternToCopy = customDrumData[chordOriginalIndex];
-      if (patternToCopy) {
-        return { pattern: patternToCopy, sourceIndex: chordOriginalIndex };
-      }
-      return null;
-    });
-  }, [customDrumData]);
-
-  const handlePasteDrumPattern = useCallback((chordOriginalIndex: number) => {
-    if (drumPatternClipboard) {
-      handleSetCustomDrumPatternForChord(chordOriginalIndex, drumPatternClipboard.pattern);
-    }
-  }, [drumPatternClipboard, handleSetCustomDrumPatternForChord]);
 
   const handleGenerateDrumPattern = useCallback(async (prompt: string, chordOriginalIndex: number) => {
     const key = requireApiKey('drums');
