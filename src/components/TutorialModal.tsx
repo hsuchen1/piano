@@ -102,8 +102,8 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                 <ListItem>
                   <strong>儲存與載入:</strong>
                   <ul className="list-square list-inside pl-5 mt-1 text-sm space-y-1">
-                    <ListItem><strong>儲存:</strong> 點擊「儲存」按鈕，為您當前的和弦進行命名並保存。</ListItem>
-                    <ListItem><strong>載入:</strong> 在「已儲存的和弦進行」面板中，點擊「載入」以還原之前儲存的設定（包含所有樂器、節奏和效果）。</ListItem>
+                    <ListItem><strong>儲存:</strong> 點擊「儲存」按鈕，為您當前的和弦進行命名並保存至瀏覽器本機。若名稱與既有存檔重複，會先詢問是否覆寫。</ListItem>
+                    <ListItem><strong>載入:</strong> 在「已儲存的和弦進行」面板中點擊「載入」。除了和弦與轉位，速度、移調、主鍵盤音色與音量、各伴奏層設定、鼓組、貝斯與三項效果都會一併還原。</ListItem>
                   </ul>
                 </ListItem>
            </ol>
