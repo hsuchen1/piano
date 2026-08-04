@@ -21,7 +21,7 @@ export const getChordNotes = (chord: ChordDefinition, octaveForRoot: number, tra
 
   try {
     const rootMidi = ToneRef.Frequency(rootFullName).toMidi();
-    let midiValues = intervals.map(interval => rootMidi + interval);
+    const midiValues = intervals.map(interval => rootMidi + interval);
 
     // Apply inversions
     if (inversion > 0 && midiValues.length > 1) {
@@ -34,13 +34,6 @@ export const getChordNotes = (chord: ChordDefinition, octaveForRoot: number, tra
             }
         }
       }
-    }
-
-    // Octave Normalization (Voice Leading Fix)
-    // Keep the lowest note within the target octave band (e.g., C4 ~ B4) to prevent upward drift.
-    const baseC_Midi = ToneRef.Frequency(`C${octaveForRoot}`).toMidi();
-    while (midiValues.length > 0 && midiValues[0] >= baseC_Midi + 12) {
-      midiValues = midiValues.map(midi => midi - 12);
     }
 
     return midiValues.map(midi => ToneRef.Frequency(midi, "midi").toNote());
