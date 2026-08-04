@@ -7,9 +7,18 @@ interface PianoKeyProps {
   onNoteRelease: (noteName: NoteName, octave: number) => void;
   isComputerKeyPressed?: boolean;
   isAccompanimentActive?: boolean;
+  /**
+   * Horizontal placement for black keys, supplied by the keyboard as a percentage
+   * so it tracks the container width.
+   *
+   * The key used to size itself (`w-10`) and rely on a negative margin to overlap
+   * its neighbour, which only worked at one fixed width and forced the whole
+   * keyboard to scroll horizontally. Width is now the parent's responsibility.
+   */
+  positionStyle?: React.CSSProperties;
 }
 
-const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteRelease, isComputerKeyPressed, isAccompanimentActive }) => {
+const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteRelease, isComputerKeyPressed, isAccompanimentActive, positionStyle }) => {
   const { note, octave, isBlack, displayName } = keyData;
   const [isMouseActive, setIsMouseActive] = React.useState(false);
 
@@ -18,14 +27,17 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
   // Use a slightly faster duration for a snappier press/release animation.
   const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-75 ease-out relative group";
   
-  // White key styles. `transform` is added for the press effect.
-  const whiteKeyStyles = `bg-white text-black h-48 w-10 hover:bg-gray-200 shadow-sm`;
+  // White keys share the row width via flex-1, so they always fill the container
+  // instead of forcing a fixed 1120px scroll area. Height steps down on small
+  // screens, where 192px swallowed nearly a third of the viewport.
+  const whiteKeyStyles = `bg-white text-black flex-1 min-w-0 h-32 sm:h-40 lg:h-48 hover:bg-gray-200 shadow-sm rounded-b`;
   // When pressed, translate down and add an inner shadow for a "pushed in" feel.
   const pressedWhiteKeyStyles = "bg-gray-300 shadow-inner transform translate-y-px";
   const accompanimentWhiteKeyStyles = "bg-blue-200";
 
-  // Black key styles.
-  const blackKeyStyles = `bg-gray-800 text-white h-32 w-6 hover:bg-gray-700 absolute z-10 shadow-md border-l-2 border-r-2 border-b-4 border-gray-900`;
+  // Black keys are positioned by the parent as a percentage, and sized as a share
+  // of a white key rather than a fixed pixel width.
+  const blackKeyStyles = `bg-gray-900 text-white w-[7%] max-w-[26px] h-20 sm:h-24 lg:h-32 hover:bg-gray-800 absolute top-0 z-10 shadow-md rounded-b border-x border-b-2 border-black -translate-x-1/2`;
   // When pressed, translate down, become darker, and reduce bottom border to simulate sinking.
   const pressedBlackKeyStyles = "bg-black border-b-2 border-black transform translate-y-px";
   const accompanimentBlackKeyStyles = "bg-blue-800";
@@ -49,8 +61,7 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
     }
   }
   
-  const blackKeyMargin = "ml-[-0.75rem]";
-  const styles = `${baseStyles} ${keySpecificStyles} ${isBlack ? blackKeyMargin : ''}`;
+  const styles = `${baseStyles} ${keySpecificStyles}`;
 
   const handleMouseDown = () => {
     onNoteAttack(note, octave);
@@ -83,6 +94,7 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
     <button
       type="button"
       className={styles}
+      style={positionStyle}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUpOrLeave}
       onMouseLeave={handleMouseUpOrLeave} 
@@ -92,9 +104,11 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
       aria-label={`${displayName}${octave}`}
       aria-pressed={isEffectivelyPressed}
     >
-      <span className={`text-xs font-semibold pointer-events-none ${isBlack ? 'text-gray-300 group-hover:text-white mb-1' : 'text-gray-600 group-hover:text-black mb-1'}`}>
+      {/* Note names are hidden on the narrowest keys, where they no longer fit and
+          only made the keys look cluttered. The accessible name still carries them. */}
+      <span className={`hidden sm:block text-xs font-semibold pointer-events-none text-center leading-tight mb-1 ${isBlack ? 'text-gray-300 group-hover:text-white' : 'text-gray-600 group-hover:text-black'}`}>
         {displayName}
-        <span className="text-gray-500 text-[0.6rem] block">{octave}</span>
+        <span className="hidden lg:block text-gray-500 text-xs">{octave}</span>
       </span>
     </button>
   );
