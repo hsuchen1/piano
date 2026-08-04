@@ -43,6 +43,21 @@ export interface ChordDefinition {
   inversion: number; // 0: root, 1: 1st, 2: 2nd, etc.
 }
 
+/** Which AI feature is currently running. */
+export type GenerationKind = 'chords' | 'style' | 'drums' | 'voicing' | 'bass';
+
+/**
+ * Shared shape for AI request progress. Four components previously re-declared
+ * this inline, each typing `type` as a bare `string | null`.
+ */
+export interface GenerationState {
+  type: GenerationKind | null;
+  isLoading: boolean;
+  error: string | null;
+  /** Which chord's drum pattern is generating, so only that cell shows a spinner. */
+  drumChordIndex?: number;
+}
+
 export enum AccompanimentInstrument {
   AcousticPiano = "AcousticPiano",
   SynthPiano = "SynthPiano",

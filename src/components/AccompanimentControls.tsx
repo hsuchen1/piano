@@ -1,7 +1,7 @@
 
 
 import React, { useState, memo } from 'react';
-import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, CustomDrumChordPattern } from '../types';
+import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, AccompanimentLayer, CustomDrumChordPattern, GenerationState } from '../types';
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
 import CustomRhythmEditor from './CustomRhythmEditor';
 import CustomDrumEditor from './CustomDrumEditor';
@@ -48,7 +48,7 @@ interface AccompanimentControlsProps {
   drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
   onCopyDrumPattern: (chordOriginalIndex: number) => void;
   onPasteDrumPattern: (chordOriginalIndex: number) => void;
-  generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
+  generationState: GenerationState;
   isApiKeySet: boolean;
 
   bassEnabled: boolean;
@@ -145,7 +145,7 @@ interface DrumKitPanelProps {
     drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
     onCopyDrumPattern: (chordOriginalIndex: number) => void;
     onPasteDrumPattern: (chordOriginalIndex: number) => void;
-    generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
+    generationState: GenerationState;
     isApiKeySet: boolean;
 }
 
@@ -198,7 +198,7 @@ interface BassGuitarPanelProps {
     onGenerateAIBassline: (prompt: string) => void;
     chordProgressionEmpty: boolean;
     isApiKeySet: boolean;
-    generationState: { type: string | null; isLoading: boolean; error: string | null };
+    generationState: GenerationState;
 }
 
 const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onBassEnabledChange, bassVolume, onBassVolumeChange, bassInstrument, onBassInstrumentChange, bassPattern, onBassPatternChange, onGenerateAIBassline, chordProgressionEmpty, isApiKeySet, generationState }) => {

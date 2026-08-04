@@ -1,7 +1,7 @@
 
 import React, {useState} from 'react';
 import type { ChordWithIndex } from '../App';
-import { DrumInstrument, CustomDrumProgressionData, CustomDrumChordPattern } from '../types';
+import { DrumInstrument, CustomDrumProgressionData, CustomDrumChordPattern, GenerationState } from '../types';
 import { DRUM_INSTRUMENT_OPTIONS, NUM_BEATS_PER_DRUM_MEASURE, NUM_SUBDIVISIONS_PER_DRUM_BEAT, createDefaultCustomDrumChordPattern } from '../constants';
 
 interface CustomDrumEditorProps {
@@ -18,7 +18,7 @@ interface CustomDrumEditorProps {
   drumPatternClipboard: { pattern: CustomDrumChordPattern, sourceIndex: number } | null;
   onCopy: (chordOriginalIndex: number) => void;
   onPaste: (chordOriginalIndex: number) => void;
-  generationState: { type: string | null; isLoading: boolean; error: string | null; drumChordIndex?: number; };
+  generationState: GenerationState;
   isApiKeySet: boolean;
 }
 

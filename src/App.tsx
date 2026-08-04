@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { useState, useCallback, useEffect, useId, useMemo, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
@@ -17,44 +16,31 @@ import TutorialModal from './components/TutorialModal';
 import GeminiChordGenerator from './components/GeminiChordGenerator';
 import ApiSettings from './components/ApiSettings'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
+import { useAiGeneration } from './hooks/useAiGeneration';
+import {
+  chooseVoicings, generateBassline, generateChordProgression,
+  generateDrumPattern, reharmonizeProgression
+} from './services/gemini';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, SAVED_PROGRESSION_SCHEMA_VERSION, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent
+  SavedProgressionEntry, SAVED_PROGRESSION_SCHEMA_VERSION, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent, GenerationKind
 } from './types';
 import {
   KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS, ACCOMPANIMENT_BASE_OCTAVE,
+  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, ACCOMPANIMENT_BASE_OCTAVE,
   DEFAULT_BPM, DEFAULT_TRANSPOSE_SEMITONES, DEFAULT_USER_PIANO_INSTRUMENT,
   DEFAULT_REVERB_LEVEL, DEFAULT_DELAY_LEVEL, DEFAULT_SWING
 } from './constants';
 import {
-  isChordType, normalizeNoteName, getVoicingOptionsForChord,
+  getVoicingOptionsForChord,
   createLayerId, loadSavedProgressions, persistSavedProgressions
 } from './utils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
   originalIndex: number;
-}
-
-/**
- * Gemini's `response.text` is optional: it is `undefined` when the model returns
- * no usable candidate (safety block, empty completion, quota trip). Passing that
- * straight to JSON.parse throws an opaque `"undefined" is not valid JSON`, which
- * surfaces to the user as gibberish. Distinguish "no response" from "malformed
- * response" so the error message is actionable.
- */
-function parseAiJson<T>(text: string | undefined): T {
-  if (!text || !text.trim()) {
-    throw new Error('AI 未回傳任何內容（可能被安全機制阻擋或額度已用盡），請稍後再試或調整提示詞。');
-  }
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error('AI 回傳的內容不是有效的 JSON 格式，請重試。');
-  }
 }
 
 const App: React.FC = () => {
@@ -103,12 +89,8 @@ const App: React.FC = () => {
     (import.meta.env.DEV ? import.meta.env.VITE_GEMINI_API_KEY : undefined) ||
     localStorage.getItem('gemini_api_key')
   );
-  const [generationState, setGenerationState] = useState<{
-    type: 'chords' | 'style' | 'drums' | 'voicing' | 'bass' | null;
-    isLoading: boolean;
-    error: string | null;
-    drumChordIndex?: number;
-  }>({ type: null, isLoading: false, error: null });
+  // Loading/error bookkeeping for all five AI features lives in this hook.
+  const { generationState, run, reportError } = useAiGeneration();
 
 
   // New state for playback highlighting and effects
@@ -496,226 +478,86 @@ const App: React.FC = () => {
     setApiKey(key);
   };
   
-  const validateAndSetProgression = useCallback((newChords: any) => {
-      if (!Array.isArray(newChords)) {
-        throw new Error("AI response is not a valid array.");
-      }
-      
-      const validatedProgression: ChordDefinition[] = [];
-      for (const item of newChords) {
-        const normalizedRoot = normalizeNoteName(item.root);
-        if (!normalizedRoot) throw new Error(`AI returned an invalid chord root: ${item.root}`);
-        if (!isChordType(item.type)) throw new Error(`AI returned an invalid chord type: ${item.type}`);
-        
-        validatedProgression.push({
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          root: normalizedRoot,
-          type: item.type,
-          inversion: 0
-        });
-      }
-
+  /**
+   * Applies an AI-produced progression. Validation now happens in the gemini
+   * service, so this only deals with the state transition.
+   */
+  const applyGeneratedProgression = useCallback((newProgression: ChordDefinition[]) => {
       if (audio.isAccompanimentPlaying) handleStopAccompaniment();
-      setChordProgression(validatedProgression);
+      setChordProgression(newProgression);
       setCustomRhythms({});
-      setCustomDrumData(Array(validatedProgression.length).fill(null).map(() => createDefaultCustomDrumChordPattern()));
+      setCustomDrumData(newProgression.map(() => createDefaultCustomDrumChordPattern()));
       setAiBassEvents(null); // Reset AI bass on new progression
       setBassPattern(DEFAULT_BASS_PATTERN);
-  }, [audio, handleStopAccompaniment]);
+  }, [audio.isAccompanimentPlaying, handleStopAccompaniment]);
 
-  const handleGenerateProgression = async (prompt: string, numChords: string) => {
-    if (generationState.isLoading) return;
+  /** Every AI feature needs a key; report it the same way for all of them. */
+  const requireApiKey = useCallback((kind: GenerationKind): string | null => {
     if (!apiKey) {
-      setGenerationState({ type: 'chords', isLoading: false, error: "請先在 API 設定中輸入您的 Gemini API 金鑰。" });
-      return;
+      reportError(kind, "請先在 API 設定中輸入您的 Gemini API 金鑰。");
+      return null;
     }
+    return apiKey;
+  }, [apiKey, reportError]);
+
+  const handleGenerateProgression = useCallback(async (prompt: string, numChords: string) => {
+    const key = requireApiKey('chords');
+    if (!key) return;
     if (chordProgression.length > 0 && !window.confirm("AI 將會取代您目前的和弦進行。確定要繼續嗎？")) return;
-    
-    setGenerationState({ type: 'chords', isLoading: true, error: null });
 
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const baseInstruction = "You are an expert music theorist and composer. Your task is to generate a common chord progression based on the user's description. Your response MUST be in JSON format.";
-      const countInstruction = numChords !== 'auto' ? `The progression must contain exactly ${parseInt(numChords, 10)} chords.` : "The progression should contain between 4 and 8 chords.";
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `User request: '${prompt}'`,
-        config: {
-          systemInstruction: `${baseInstruction} ${countInstruction}`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                root: { type: Type.STRING, description: "The chord's root note, e.g., 'C', 'G#', 'Bb'" },
-                type: { type: Type.STRING, description: `The chord type, must be one of: '${Object.values(ChordType).join("', '")}'` }
-              },
-              required: ["root", "type"]
-            }
-          }
-        }
-      });
+    const progression = await run(
+      { kind: 'chords', errorLabel: 'AI 和弦生成失敗' },
+      () => generateChordProgression(key, prompt, numChords)
+    );
+    if (progression) applyGeneratedProgression(progression);
+  }, [requireApiKey, chordProgression.length, run, applyGeneratedProgression]);
 
-      validateAndSetProgression(parseAiJson(response.text));
-      setGenerationState({ type: null, isLoading: false, error: null });
+  const handleStyleTransfer = useCallback(async (prompt: string) => {
+    if (chordProgression.length === 0) return;
+    const key = requireApiKey('style');
+    if (!key) return;
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      console.error("Error generating chord progression:", error);
-      setGenerationState({ type: 'chords', isLoading: false, error: `Generation failed: ${errorMessage}` });
-    }
-  };
-  
-  const handleStyleTransfer = async (prompt: string) => {
-      if (generationState.isLoading || chordProgression.length === 0) return;
-      if (!apiKey) {
-        alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
-        return;
-      }
-      setGenerationState({ type: 'style', isLoading: true, error: null });
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const currentProgressionStr = chordProgression.map(c => `${c.root}${c.type}`).join(', ');
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Re-harmonize the following chord progression: [${currentProgressionStr}] into a "${prompt}" style.`,
-            config: {
-                systemInstruction: "You are a master music arranger. Your task is to re-harmonize a given chord progression into a new style specified by the user. You can use more advanced chords (e.g., sevenths, ninths, altered chords) and substitutions, but you must maintain the general harmonic flow and the same number of chords as the original. Your response MUST be a JSON array with the exact same structure and number of elements as the original progression.",
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            root: { type: Type.STRING, description: "The chord's root note, e.g., 'C', 'G#', 'Bb'" },
-                            type: { type: Type.STRING, description: `The chord type, must be one of: '${Object.values(ChordType).join("', '")}'` }
-                        },
-                        required: ["root", "type"]
-                    }
-                }
-            }
-        });
+    const progression = await run(
+      { kind: 'style', errorLabel: '風格轉換失敗' },
+      () => reharmonizeProgression(key, chordProgression, prompt)
+    );
+    if (progression) applyGeneratedProgression(progression);
+  }, [chordProgression, requireApiKey, run, applyGeneratedProgression]);
 
-        const newChords = parseAiJson<unknown[]>(response.text);
-        if (newChords.length !== chordProgression.length) {
-            throw new Error(`AI returned ${newChords.length} chords, but expected ${chordProgression.length}.`);
-        }
-        validateAndSetProgression(newChords);
-        setGenerationState({ type: null, isLoading: false, error: null });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        console.error("Error transforming chord progression:", error);
-        setGenerationState({ type: 'style', isLoading: false, error: `風格轉換失敗: ${errorMessage}` });
-      }
-  };
-
-  const handleSmartVoicing = async () => {
-    if (generationState.isLoading || chordProgression.length < 2) return;
-    if (!apiKey) {
-      alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
-      return;
-    }
+  const handleSmartVoicing = useCallback(async () => {
+    if (chordProgression.length < 2) return;
+    const key = requireApiKey('voicing');
+    if (!key) return;
     if (!window.confirm("這將會由 AI 自動調整您所有和弦的轉位以獲得更流暢、音高更穩定的聲音。確定要繼續嗎？")) return;
 
-    setGenerationState({ type: 'voicing', isLoading: true, error: null });
-    try {
-      const ai = new GoogleGenAI({ apiKey });
+    const voicingOptions = chordProgression.map(chord => ({
+      chord_name: `${chord.root}${chord.type}`,
+      voicings: getVoicingOptionsForChord(chord, ACCOMPANIMENT_BASE_OCTAVE),
+    }));
 
-      const allVoicingOptions = chordProgression.map(chord => {
-        const voicingOptions = getVoicingOptionsForChord(chord, ACCOMPANIMENT_BASE_OCTAVE);
-        return {
-          chord_name: `${chord.root}${chord.type}`,
-          voicings: voicingOptions
-        };
-      });
+    const inversions = await run(
+      { kind: 'voicing', errorLabel: 'AI 智慧轉位失敗' },
+      () => chooseVoicings(key, chordProgression, voicingOptions)
+    );
+    if (!inversions) return;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Analyze this chord progression and determine the optimal inversion for each chord. Progression data with all possible voicings: ${JSON.stringify(allVoicingOptions)}`,
-        config: {
-          systemInstruction: "You are a music arrangement expert specializing in voice leading. For each chord in the progression, you are given a list of possible voicings, each with an inversion number and the resulting MIDI-style note names (e.g., C4). Your task is to select one voicing (by its inversion number) for each chord. Your PRIMARY goal is to minimize melodic movement in the highest note between adjacent chords to create the smoothest possible voice leading. As a SECONDARY goal, if a chosen voicing results in most of its notes falling outside the B2 to C4 range, you should re-evaluate and select a different inversion that better fits this range, even if it slightly compromises the primary voice-leading goal. Your response MUST be a JSON array of numbers. The length of the array must be identical to the input progression's length. Each number represents the chosen inversion for the corresponding chord.",
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.INTEGER }
-          }
-        }
-      });
+    setChordProgression(prev => prev.map((chord, index) => ({
+      ...chord,
+      inversion: inversions[index],
+    })));
+  }, [chordProgression, requireApiKey, run]);
 
-      const newInversions = parseAiJson<number[]>(response.text);
-      if (!Array.isArray(newInversions) || newInversions.length !== chordProgression.length) {
-        throw new Error(`AI returned an invalid response. Expected an array of ${chordProgression.length} numbers.`);
-      }
+  const handleGenerateAIBassline = useCallback(async (prompt: string) => {
+    if (chordProgression.length === 0) return;
+    const key = requireApiKey('bass');
+    if (!key) return;
 
-      const validatedInversions = newInversions.map((inv, index) => {
-        if (typeof inv !== 'number') {
-          throw new Error(`AI returned a non-numeric inversion for chord ${index + 1}.`);
-        }
-        const maxInversion = (CHORD_INTERVALS[chordProgression[index].type]?.length || 1) - 1;
-        if (inv < 0 || inv > maxInversion) {
-          console.warn(`AI returned an out-of-bounds inversion (${inv}) for chord ${index + 1}. Clamping to nearest valid value.`);
-          return Math.max(0, Math.min(inv, maxInversion));
-        }
-        return inv;
-      });
-
-      setChordProgression(prev => prev.map((chord, index) => ({
-        ...chord,
-        inversion: validatedInversions[index]
-      })));
-      setGenerationState({ type: null, isLoading: false, error: null });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      console.error("Error with Smart Voicing:", error);
-      setGenerationState({ type: 'voicing', isLoading: false, error: `AI 智慧轉位失敗: ${errorMessage}` });
-    }
-  };
-
-  const handleGenerateAIBassline = async (prompt: string) => {
-    if (generationState.isLoading || chordProgression.length === 0) return;
-    if (!apiKey) {
-      alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
-      return;
-    }
-    setGenerationState({ type: 'bass', isLoading: true, error: null });
-
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const currentProgressionStr = chordProgression.map(c => `${c.root}${c.type}`).join(', ');
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Create a bassline for the chord progression [${currentProgressionStr}]. The user wants a style described as: "${prompt}".`,
-            config: {
-                systemInstruction: `You are a professional bass player. Your task is to create a monophonic bassline for a given chord progression. The bassline should be musically interesting, fit the user's description, and stay within a typical bass range (E1 to G3). The response MUST be a JSON array of note events. Each event is an object with "note" (e.g., "C2"), "time" (in "measure:beat:subdivision" format, e.g., "0:0:0"), and "duration" (e.g., "4n", "8n."). The total duration should match the progression length (${chordProgression.length} measures).`,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            note: { type: Type.STRING, description: "The note to play, e.g., 'A2'" },
-                            time: { type: Type.STRING, description: 'The absolute time "M:B:S", e.g. "1:2:0"' },
-                            duration: { type: Type.STRING, description: 'The note duration, e.g., "8n"' }
-                        },
-                        required: ["note", "time", "duration"]
-                    }
-                }
-            }
-        });
-        const newBassEvents = parseAiJson<AiNoteEvent[]>(response.text);
-        setAiBassEvents(newBassEvents);
-        setGenerationState({ type: null, isLoading: false, error: null });
-
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        console.error("Error generating AI bassline:", error);
-        setGenerationState({ type: 'bass', isLoading: false, error: `AI 貝斯線生成失敗: ${errorMessage}` });
-    }
-  };
+    const events = await run(
+      { kind: 'bass', errorLabel: 'AI 貝斯線生成失敗' },
+      () => generateBassline(key, chordProgression, prompt)
+    );
+    if (events) setAiBassEvents(events);
+  }, [chordProgression, requireApiKey, run]);
 
 
   const handleSetCustomDrumPatternForChord = useCallback((chordOriginalIndex: number, newPattern: CustomDrumChordPattern) => {
@@ -753,46 +595,16 @@ const App: React.FC = () => {
     }
   }, [drumPatternClipboard, handleSetCustomDrumPatternForChord]);
 
-  const handleGenerateDrumPattern = async (prompt: string, chordOriginalIndex: number) => {
-    if (generationState.isLoading) return;
-    if (!apiKey) {
-      alert("請先在 API 設定中輸入您的 Gemini API 金鑰。");
-      return;
-    }
-    setGenerationState({ type: 'drums', isLoading: true, error: null, drumChordIndex: chordOriginalIndex });
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const availableInstruments = DRUM_INSTRUMENT_OPTIONS.map(opt => opt.value).join(", ");
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `User's request for a one-measure drum pattern: "${prompt}"`,
-            config: {
-                systemInstruction: `You are an expert drum machine programmer. Your task is to generate a one-measure (16-step) drum pattern based on a user's text description. The response MUST be a JSON object. The keys of the object must be instrument names from the following list: [${availableInstruments}]. The value for each key must be a 4x4 array of booleans, representing 4 beats, each with 4 subdivisions (16th notes). 'true' means a hit, 'false' means a rest.`,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: DRUM_INSTRUMENT_OPTIONS.reduce((acc, opt) => {
-                        acc[opt.value] = { 
-                            type: Type.ARRAY, 
-                            items: { type: Type.ARRAY, items: { type: Type.BOOLEAN } } 
-                        };
-                        return acc;
-                    }, {} as Record<string, any>)
-                }
-            }
-        });
+  const handleGenerateDrumPattern = useCallback(async (prompt: string, chordOriginalIndex: number) => {
+    const key = requireApiKey('drums');
+    if (!key) return;
 
-        const newPattern = parseAiJson<CustomDrumChordPattern>(response.text);
-        handleSetCustomDrumPatternForChord(chordOriginalIndex, newPattern);
-        setGenerationState({ type: null, isLoading: false, error: null });
-
-    } catch(error) {
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        console.error("Error generating drum pattern:", error);
-        setGenerationState({ type: 'drums', isLoading: false, error: `鼓組生成失敗: ${errorMessage}` });
-    }
-  };
+    const pattern = await run(
+      { kind: 'drums', errorLabel: '鼓組生成失敗', drumChordIndex: chordOriginalIndex },
+      () => generateDrumPattern(key, prompt)
+    );
+    if (pattern) handleSetCustomDrumPatternForChord(chordOriginalIndex, pattern);
+  }, [requireApiKey, run, handleSetCustomDrumPatternForChord]);
 
 
   useEffect(() => {
