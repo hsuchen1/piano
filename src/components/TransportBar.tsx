@@ -1,5 +1,6 @@
 import React from 'react';
 import { MAX_BPM, MIN_BPM } from '../constants';
+import RangeSlider from './RangeSlider';
 
 interface TransportBarProps {
   bpm: number;
@@ -74,15 +75,16 @@ const TransportBar: React.FC<TransportBarProps> = ({
           aria-hidden="true"
         />
         <span className="text-xs text-gray-300 font-mono shrink-0 tabular-nums">{bpm} BPM</span>
-        <input
-          type="range"
+        <RangeSlider
           id="transportBarBpm"
           min={MIN_BPM}
           max={MAX_BPM}
+          step={1}
           value={bpm}
-          onChange={event => onBpmChange(parseInt(event.target.value, 10))}
-          className="flex-grow min-w-0 h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-accent-ai focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ai"
-          aria-label="調整伴奏速度"
+          onChange={onBpmChange}
+          color="purple"
+          className="flex-grow min-w-0"
+          ariaLabel="調整伴奏速度"
         />
       </label>
     </div>

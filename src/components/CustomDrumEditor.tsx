@@ -151,11 +151,17 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
                       {[0, 1, 2, 3].map(beatIndex => (
                         <div
                           key={beatIndex}
-                          className={`px-1 sm:px-1.5 ${beatIndex < NUM_BEATS_PER_DRUM_MEASURE - 1 ? 'border-r border-surface-line' : ''}`}
+                          className={`px-1 sm:px-1.5 flex flex-col justify-end ${beatIndex < NUM_BEATS_PER_DRUM_MEASURE - 1 ? 'border-r border-surface-line' : ''}`}
                         >
-                          <span className="block text-xs text-gray-400 leading-none text-center">
+                          <span className="block text-xs text-gray-400 leading-none text-center mb-1">
                             {beatIndex + 1}
                           </span>
+                          {/* Invisible placeholder matching the exact width of the drum pads below to ensure alignment */}
+                          <div className="flex gap-px p-px invisible h-0">
+                            {[0, 1, 2, 3].map(subdivisionIndex => (
+                              <div key={subdivisionIndex} className="w-6 sm:w-7" />
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>

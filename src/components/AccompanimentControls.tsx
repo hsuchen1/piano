@@ -5,6 +5,7 @@ import { AccompanimentInstrument, AccompanimentRhythmPattern, BeatDuration, Drum
 import { MIN_BPM, MAX_BPM, MIN_VOLUME, MAX_VOLUME, ACCOMPANIMENT_INSTRUMENT_OPTIONS, ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS, DRUM_PATTERN_OPTIONS, BASS_INSTRUMENT_OPTIONS, BASS_PATTERN_OPTIONS, MAX_BASS_VOLUME } from '../constants';
 import CustomRhythmEditor from './CustomRhythmEditor';
 import CustomDrumEditor from './CustomDrumEditor';
+import RangeSlider from './RangeSlider';
 import AiPromptDialog from '../ui/AiPromptDialog';
 import type { ChordWithIndex } from '../types';
 
@@ -141,7 +142,16 @@ const ChordInstrumentPanel: React.FC<ChordInstrumentPanelProps> = memo(({ accomp
         )}
         <div>
           <label htmlFor={`chordVolume-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">音量: {layer.volume.toFixed(0)} dB</label>
-          <input type="range" id={`chordVolume-${layer.id}`} min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={layer.volume} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'volume', parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+          <RangeSlider
+            id={`chordVolume-${layer.id}`}
+            min={MIN_VOLUME}
+            max={MAX_VOLUME}
+            step={1}
+            value={layer.volume}
+            onChange={(val) => onUpdateAccompanimentLayer(layer.id, 'volume', val)}
+            color="blue"
+            ariaLabel={`伴奏層 ${index + 1} 音量`}
+          />
         </div>
         <div>
           <label htmlFor={`chordInstrument-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">樂器</label>
@@ -196,7 +206,16 @@ const DrumKitPanel: React.FC<DrumKitPanelProps> = memo(({ drumsEnabled, onDrumsE
     {drumsEnabled && (<>
       <div>
         <label htmlFor="drumVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {drumVolume.toFixed(0)} dB</label>
-        <input type="range" id="drumVolume" min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={drumVolume} onChange={(e) => onDrumVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-red-500" />
+        <RangeSlider
+          id="drumVolume"
+          min={MIN_VOLUME}
+          max={MAX_VOLUME}
+          step={1}
+          value={drumVolume}
+          onChange={onDrumVolumeChange}
+          color="red"
+          ariaLabel="鼓組音量"
+        />
       </div>
       <div>
         <label htmlFor="drumPattern" className="block text-sm font-medium text-gray-300 mb-1">鼓組風格 (Pattern)</label>
@@ -267,7 +286,16 @@ const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onB
         {bassEnabled && (<>
           <div>
             <label htmlFor="bassVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {bassVolume.toFixed(0)} dB</label>
-            <input type="range" id="bassVolume" min={MIN_VOLUME} max={MAX_BASS_VOLUME} step="1" value={bassVolume} onChange={(e) => onBassVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+            <RangeSlider
+              id="bassVolume"
+              min={MIN_VOLUME}
+              max={MAX_BASS_VOLUME}
+              step={1}
+              value={bassVolume}
+              onChange={onBassVolumeChange}
+              color="yellow"
+              ariaLabel="貝斯音量"
+            />
           </div>
           <div>
             <label htmlFor="bassInstrument" className="block text-sm font-medium text-gray-300 mb-1">貝斯音色 (Instrument)</label>
@@ -317,15 +345,15 @@ const EffectsPanel: React.FC<EffectsPanelProps> = memo(({ reverbLevel, onReverbL
     <h4 className="text-md font-semibold text-gray-200">全域效果與律動</h4>
     <div>
       <label htmlFor="reverb" className="block text-sm font-medium text-gray-300 mb-1">殘響 (Reverb): {(reverbLevel * 100).toFixed(0)}%</label>
-      <input type="range" id="reverb" min="0" max="1" step="0.01" value={reverbLevel} onChange={(e) => onReverbLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-teal-500" />
+      <RangeSlider id="reverb" min={0} max={1} step={0.01} value={reverbLevel} onChange={onReverbLevelChange} color="teal" ariaLabel="殘響程度" />
     </div>
      <div>
       <label htmlFor="delay" className="block text-sm font-medium text-gray-300 mb-1">延遲 (Delay): {(delayLevel * 100).toFixed(0)}%</label>
-      <input type="range" id="delay" min="0" max="1" step="0.01" value={delayLevel} onChange={(e) => onDelayLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+      <RangeSlider id="delay" min={0} max={1} step={0.01} value={delayLevel} onChange={onDelayLevelChange} color="cyan" ariaLabel="延遲程度" />
     </div>
     <div>
       <label htmlFor="swing" className="block text-sm font-medium text-gray-300 mb-1">搖擺律動 (Swing): {(swing * 100).toFixed(0)}%</label>
-      <input type="range" id="swing" min="0" max="1" step="0.01" value={swing} onChange={(e) => onSwingChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-pink-500" />
+      <RangeSlider id="swing" min={0} max={1} step={0.01} value={swing} onChange={onSwingChange} color="pink" ariaLabel="搖擺律動程度" />
     </div>
   </div>
 ));
@@ -379,8 +407,16 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
             ></span>
             速度 (Tempo): {bpm} BPM
           </label>
-          <input type="range" id="bpm" min={MIN_BPM} max={MAX_BPM} value={bpm} onChange={(e) => onBpmChange(parseInt(e.target.value))}
-            className="w-full h-2.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+          <RangeSlider
+            id="bpm"
+            min={MIN_BPM}
+            max={MAX_BPM}
+            step={1}
+            value={bpm}
+            onChange={onBpmChange}
+            color="purple"
+            ariaLabel="伴奏速度"
+          />
         </div>
       </div>
 

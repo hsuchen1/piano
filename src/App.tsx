@@ -11,6 +11,7 @@ import TranspositionControl from './components/TranspositionControl';
 import ChordSelector from './components/ChordSelector';
 import ChordProgressionEditor from './components/ChordProgressionEditor';
 import AccompanimentControls from './components/AccompanimentControls';
+import RangeSlider from './components/RangeSlider';
 import SavedProgressions from './components/SavedProgressions';
 // Only rendered once the user opens the tutorial, so it is fetched on demand.
 const TutorialModal = lazy(() => import('./components/TutorialModal'));
@@ -596,16 +597,15 @@ const App: React.FC = () => {
                    </div>
                    <div>
                       <label htmlFor="userPianoVolume" className="block text-sm font-medium text-gray-300 mb-1">音量 (Volume): {userPianoVolume.toFixed(0)} dB</label>
-                      <input
-                          type="range"
+                      <RangeSlider
                           id="userPianoVolume"
                           min={MIN_USER_PIANO_VOLUME}
                           max={MAX_USER_PIANO_VOLUME}
-                          step="1"
+                          step={1}
                           value={userPianoVolume}
-                          onChange={(e) => handleUserPianoVolumeChange(parseFloat(e.target.value))}
-                          className="w-full h-2.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                          aria-label="調整主鍵盤音量"
+                          onChange={handleUserPianoVolumeChange}
+                          color="teal"
+                          ariaLabel="調整主鍵盤音量"
                       />
                    </div>
                    <div className="flex items-center justify-between pt-2">

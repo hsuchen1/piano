@@ -25,12 +25,12 @@ const PianoKey: React.FC<PianoKeyProps> = ({ keyData, onNoteAttack, onNoteReleas
   const isEffectivelyPressed = isComputerKeyPressed || isMouseActive;
 
   // Use a slightly faster duration for a snappier press/release animation.
-  const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-75 ease-out relative group";
+  const baseStyles = "border border-gray-700 flex flex-col items-center justify-end select-none cursor-pointer transition-all duration-75 ease-out group";
   
   // White keys share the row width via flex-1, so they always fill the container
   // instead of forcing a fixed 1120px scroll area. Height steps down on small
   // screens, where 192px swallowed nearly a third of the viewport.
-  const whiteKeyStyles = `bg-white text-black flex-1 min-w-0 h-32 sm:h-40 lg:h-48 hover:bg-gray-200 shadow-sm rounded-b`;
+  const whiteKeyStyles = `bg-white text-black flex-1 min-w-0 h-32 sm:h-40 lg:h-48 hover:bg-gray-200 shadow-sm rounded-b relative`;
   // When pressed, translate down and add an inner shadow for a "pushed in" feel.
   const pressedWhiteKeyStyles = "bg-gray-300 shadow-inner transform translate-y-px";
   const accompanimentWhiteKeyStyles = "bg-blue-200";
