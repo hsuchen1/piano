@@ -81,6 +81,11 @@ export interface EffectControlsProps {
 }
 
 interface AccompanimentControlsProps {
+  /**
+   * Attached to the transport row so the caller can tell when it scrolls out of
+   * view and show a floating transport instead.
+   */
+  transportRef?: (node: HTMLDivElement | null) => void;
   transport: TransportControlsProps;
   layers: ChordLayerControlsProps;
   drums: DrumControlsProps;
@@ -342,6 +347,7 @@ const EffectsPanel: React.FC<EffectsPanelProps> = memo(({ reverbLevel, onReverbL
 EffectsPanel.displayName = 'EffectsPanel';
 
 const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
+  transportRef,
   transport,
   layers,
   drums,
@@ -364,7 +370,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
   return (
     <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md space-y-4">
       {/* --- Main Controls --- */}
-      <div className="space-y-4">
+      <div className="space-y-4" ref={transportRef}>
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-semibold text-gray-100">伴奏 (Accompaniment)</h3>
           <div className="flex space-x-3">

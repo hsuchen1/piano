@@ -39,12 +39,19 @@ import {
   loadSavedProgressions, persistSavedProgressions
 } from './utils';
 import { useChordProgression } from './hooks/useChordProgression';
+import { useIsInViewport } from './hooks/useIsInViewport';
 import { useDialogs } from './ui/dialogContext';
+import TransportBar from './components/TransportBar';
 
 
 const App: React.FC = () => {
   // In-app replacements for alert/confirm/prompt. See ui/DialogProvider.
   const { showToast, confirm, prompt } = useDialogs();
+
+  // The floating transport only appears once the real one has scrolled off screen,
+  // so the user never sees two play buttons at the same time.
+  const { ref: transportRef, isInViewport: isTransportVisible } =
+    useIsInViewport<HTMLDivElement>();
 
   // `pressedComputerKeys` drives the highlight on the on-screen keyboard, while
   // `heldComputerKeys` is the mutable set the key handlers read to de-duplicate
@@ -643,6 +650,7 @@ const App: React.FC = () => {
                 isGeneratingVoicing={generationState.isLoading && generationState.type === 'voicing'}
               />
               <AccompanimentControls
+                transportRef={transportRef}
                 progression={progressionWithIndices}
                 generationState={generationState}
                 isApiKeySet={!!apiKey}
@@ -699,12 +707,31 @@ const App: React.FC = () => {
               />
             </div>
           </div>
-          <footer className="text-center text-gray-500 text-xs sm:text-sm mt-6 sm:mt-8 pb-4">
+          {/* Bottom padding clears the floating transport so it never covers the
+              footer or the last card. */}
+          <footer className="text-center text-gray-500 text-xs sm:text-sm mt-6 sm:mt-8 pb-24">
             <p>技術支持：React, Tailwind CSS, Tone.js, Gemini API</p>
             <p>&copy; {new Date().getFullYear()} by hsuchen</p>
           </footer>
         </div>
       </div>
+
+      {!isTransportVisible && (
+        <TransportBar
+          bpm={audio.currentBPM}
+          onBpmChange={audio.setAccompanimentBPM}
+          isBeat={isBeat}
+          isPlaying={audio.isAccompanimentPlaying}
+          onPlay={audio.startAccompaniment}
+          onStop={handleStopAccompaniment}
+          disabled={!audio.isAudioReady || chordProgression.length === 0}
+          disabledReason={
+            !audio.isAudioReady
+              ? '請先點擊琴鍵以初始化音訊引擎'
+              : '請先新增和弦至和弦進行'
+          }
+        />
+      )}
     </>
   );
 };

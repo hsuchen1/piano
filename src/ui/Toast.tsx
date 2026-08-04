@@ -28,7 +28,8 @@ interface ToastStackProps {
  */
 const ToastStack: React.FC<ToastStackProps> = ({ toasts, onDismiss }) => (
   <div
-    className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] flex flex-col items-center gap-2 w-full max-w-sm px-4 pointer-events-none"
+    // Offset above the floating transport bar so toasts are never hidden behind it.
+    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[70] flex flex-col items-center gap-2 w-full max-w-sm px-4 pointer-events-none"
     aria-live="polite"
     aria-atomic="false"
   >
