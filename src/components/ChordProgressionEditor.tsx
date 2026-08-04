@@ -23,6 +23,19 @@ interface InversionControlProps {
   onUpdate: (id: string, inversion: number) => void;
 }
 
+/**
+ * Card header actions. All four were `px-3 py-1`, roughly 22px tall, below the
+ * 24px WCAG 2.5.8 minimum; `min-h-touch` lifts them to 28px.
+ *
+ * Both AI actions now use the shared AI accent. Previously smart voicing was teal
+ * and style transfer purple, while teal also meant "effects" and purple also meant
+ * "tempo" elsewhere, so colour carried no reliable meaning.
+ */
+const HEADER_ACTION_BUTTON =
+  'px-3 min-h-touch inline-flex items-center text-xs rounded text-white transition-colors ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-1 ' +
+  'disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed';
+
 const InversionControl: React.FC<InversionControlProps> = React.memo(({ chord, onUpdate }) => {
   const numNotes = CHORD_INTERVALS[chord.type]?.length || 3;
   // Cap displayed inversions at a reasonable number (0-4), covering up to 9th chords
@@ -40,11 +53,13 @@ const InversionControl: React.FC<InversionControlProps> = React.memo(({ chord, o
               onUpdate(chord.id, invValue);
             }}
             className={`
-              w-5 h-5 text-xs font-mono rounded-sm transition-colors
+              w-7 h-7 text-xs font-mono rounded transition-colors
               flex items-center justify-center
-              ${chord.inversion === invValue ? 'bg-blue-500 text-white' : 'bg-gray-500 hover:bg-gray-400 text-gray-200'}
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-chord
+              ${chord.inversion === invValue ? 'bg-accent-chord text-white' : 'bg-surface-2 hover:bg-gray-600 text-gray-200'}
             `}
             aria-label={`設定為第 ${invValue} 轉位`}
+            aria-pressed={chord.inversion === invValue}
           >
             {invValue}
           </button>
@@ -161,14 +176,16 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
           </div>
         </div>
       )}
-      <div className="flex justify-between items-center mb-3">
+      {/* Wraps on narrow screens instead of squeezing four buttons onto one line. */}
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
         <h3 className="text-lg font-semibold text-gray-100">和弦進行</h3>
-        <div className="space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           {progression.length > 1 && (
             <button
+              type="button"
               onClick={onSmartVoicing}
               disabled={!canPerformAiAction || isGeneratingVoicing || isGeneratingStyle}
-              className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              className={`${HEADER_ACTION_BUTTON} bg-accent-ai hover:bg-purple-700 focus-visible:ring-accent-ai`}
               title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 最佳化和弦轉位"}
             >
              🧠 AI 智慧轉位
@@ -176,19 +193,34 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
           )}
           {progression.length > 0 && (
              <button
+              type="button"
               onClick={() => setIsStyleModalOpen(true)}
               disabled={!canPerformAiAction || isGeneratingStyle || isGeneratingVoicing}
-              className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              className={`${HEADER_ACTION_BUTTON} bg-accent-ai hover:bg-purple-700 focus-visible:ring-accent-ai`}
               title={!isApiKeySet ? "請先設定 API 金鑰" : "使用 AI 轉換風格"}
             >
-              AI 風格轉換
+              ✨ AI 風格轉換
             </button>
           )}
           {progression.length > 0 && (
-            <button onClick={onSaveProgression} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white transition-colors" title="儲存目前和弦進行">儲存</button>
+            <button
+              type="button"
+              onClick={onSaveProgression}
+              className={`${HEADER_ACTION_BUTTON} bg-accent-chord hover:bg-blue-700 focus-visible:ring-accent-chord`}
+              title="儲存目前和弦進行"
+            >
+              儲存
+            </button>
           )}
           {progression.length > 0 && (
-            <button onClick={onClearProgression} className="px-3 py-1 text-xs bg-red-700 hover:bg-red-800 rounded text-white transition-colors" title="清除所有和弦">全部清除</button>
+            <button
+              type="button"
+              onClick={onClearProgression}
+              className={`${HEADER_ACTION_BUTTON} bg-red-700 hover:bg-red-800 focus-visible:ring-red-400`}
+              title="清除所有和弦"
+            >
+              全部清除
+            </button>
           )}
         </div>
       </div>

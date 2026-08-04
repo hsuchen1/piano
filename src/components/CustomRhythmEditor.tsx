@@ -19,14 +19,15 @@ const BeatButton: React.FC<{
       type="button"
       onClick={onClick}
       className={`
-        flex-1 px-1 py-1 text-[11px] font-mono font-semibold transition-colors duration-150
-        border-t border-b border-gray-600
+        flex-1 px-1 min-h-touch text-xs font-mono font-semibold transition-colors duration-150
+        border-t border-b border-surface-line
         first:border-l first:rounded-l-md
         last:border-r last:rounded-r-md
-        focus:outline-none focus:ring-1 focus:ring-blue-400 focus:z-10
-        ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-chord focus-visible:z-10
+        ${isSelected ? 'bg-accent-chord text-white' : 'bg-surface-2 text-gray-300 hover:bg-gray-600'}
       `}
       title={option.label}
+      aria-pressed={isSelected}
     >
       {option.shortLabel}
     </button>
