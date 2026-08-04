@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Migrated verbatim from the inline <style> block that used to live in
+   index.html, so the CDN build and this bundled build render identically. */
+@layer base {
+  body {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    background-color: #1f2937; /* gray-800 */
+    color: #f3f4f6; /* gray-100 */
+    /* Prevent pull-to-refresh on mobile, which would interrupt playing. */
+    overscroll-behavior-y: contain;
+  }
+
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px; /* For horizontal scrollbars */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #374151; /* gray-700 */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #4b5563; /* gray-600 */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+  }
+}
+
+@layer utilities {
+  /* Firefox thin-scrollbar helper used by several scrollable panels. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #374151;
+  }
+}
