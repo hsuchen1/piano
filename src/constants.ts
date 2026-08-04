@@ -101,6 +101,12 @@ export const DEFAULT_BASS_VOLUME = -5;
 export const DEFAULT_BASS_PATTERN = BassPattern.Off;
 export const DEFAULT_BASS_INSTRUMENT = BassInstrument.ElectricBass;
 export const BASS_DEFAULT_OCTAVE = 2;
+// Master effect defaults. These were previously inline literals in App.tsx, which
+// left nothing for the persistence layer to fall back to when loading older saves.
+export const DEFAULT_REVERB_LEVEL = 0.1;
+export const DEFAULT_DELAY_LEVEL = 0.1;
+export const DEFAULT_SWING = 0;
+
 export const ACCOMPANIMENT_BASE_OCTAVE = 3;
 
 

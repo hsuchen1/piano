@@ -1,15 +1,14 @@
 
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+// defineConfig comes from vitest/config (not vite) so the `test` block below is typed.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // --- GitHub Pages 設定 ---
-// 您的 GitHub 使用者名稱
-const githubUsername = 'hsuchen1'; // 已根據使用者資訊填寫
-
+// 部署位置為 https://hsuchen1.github.io/piano/，因此 base 必須是 /piano/。
 // 您的 GitHub 儲存庫名稱
-const repositoryName = 'piano';    // 已根據使用者資訊填寫
+const repositoryName = 'piano';
 // --- END ---
 
 // 設定基礎路徑。對於 GitHub Pages，它通常是 /<儲存庫名稱>/
@@ -18,6 +17,13 @@ const base = process.env.NODE_ENV === 'production' ? `/${repositoryName}/` : '/'
 
 export default defineConfig({
   base: base,
+  test: {
+    // Default to node because most tests are pure functions. Files that need a
+    // DOM (localStorage) opt in with a `@vitest-environment jsdom` docblock;
+    // spinning jsdom up costs ~35s, so it is not worth paying globally.
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
   // Keep the `@/*` alias in tsconfig.json working at build time too, so TypeScript
   // and Vite resolve it identically.
   resolve: {

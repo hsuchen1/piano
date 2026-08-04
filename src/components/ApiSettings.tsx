@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface ApiSettingsProps {
   apiKey: string | null;
@@ -8,11 +8,11 @@ interface ApiSettingsProps {
 
 const ApiSettings: React.FC<ApiSettingsProps> = ({ apiKey, onApiKeyChange }) => {
   const [inputValue, setInputValue] = useState('');
-  const [isKeySaved, setIsKeySaved] = useState(!!apiKey);
 
-  useEffect(() => {
-    setIsKeySaved(!!apiKey);
-  }, [apiKey]);
+  // Derived straight from the prop. This used to be state kept in sync by an
+  // effect, which caused an extra render pass on every key change for a value
+  // that is just a boolean view of `apiKey`.
+  const isKeySaved = !!apiKey;
 
   const handleSave = () => {
     if (inputValue.trim()) {

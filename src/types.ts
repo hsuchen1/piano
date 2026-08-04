@@ -138,7 +138,21 @@ export enum BassPattern {
   AiGenerated = "AiGenerated",
 }
 
+/**
+ * Bumped whenever the persisted shape changes. Entries written before versioning
+ * existed have no `version` field and are treated as version 1.
+ *
+ * v1 -> v2: added the global mix and groove settings (bpm, transposition,
+ * userPianoVolume, userPianoInstrument, reverbLevel, delayLevel, swing). Saving
+ * previously discarded all of these, so a saved progression silently came back
+ * with whatever the user happened to have dialled in at load time.
+ */
+export const SAVED_PROGRESSION_SCHEMA_VERSION = 2;
+
 export interface SavedProgressionEntry {
+  /** Absent on pre-versioning entries; migrate() normalises those to the current version. */
+  version?: number;
+
   progression: ChordDefinition[];
   // Accompaniment Layers
   accompanimentLayers: AccompanimentLayer[];
@@ -155,11 +169,20 @@ export interface SavedProgressionEntry {
   // `null` is a meaningful value here: it means "AI bassline explicitly cleared",
   // which is what App state holds, so saved entries must be able to round-trip it.
   aiBassEvents?: AiNoteEvent[] | null;
-  
+
   // New custom rhythms structure
   customRhythms?: Record<string, BeatDuration[][]>;
 
-  // --- Legacy properties for migration ---
+  // --- Global mix and groove (added in v2) ---
+  bpm?: number;
+  transposition?: number;
+  userPianoVolume?: number;
+  userPianoInstrument?: UserPianoInstrument;
+  reverbLevel?: number;
+  delayLevel?: number;
+  swing?: number;
+
+  // --- Legacy properties, read during migration and never written back ---
   instrument?: AccompanimentInstrument;
   volume?: number;
   rhythmPattern?: AccompanimentRhythmPattern;

@@ -4,7 +4,7 @@
 
 
 import React from 'react';
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useId, useMemo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 import PianoKeyboard from './components/PianoKeyboard';
@@ -19,15 +19,20 @@ import ApiSettings from './components/ApiSettings'; // Import the new component
 import { useAudio, UseAudioReturn } from './hooks/useAudio';
 import {
   ChordDefinition, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
-  SavedProgressionEntry, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent
+  SavedProgressionEntry, SAVED_PROGRESSION_SCHEMA_VERSION, DrumPattern, DrumInstrument, BassPattern, BassInstrument, CustomDrumProgressionData, ChordType, CustomDrumChordPattern, AccompanimentLayer, AiNoteEvent
 } from './types';
 import {
-  KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION, SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY,
+  KEY_MAPPING, USER_PIANO_INSTRUMENT_OPTIONS, DEFAULT_CUSTOM_BEAT_DURATION,
   DEFAULT_DRUMS_ENABLED, DEFAULT_DRUM_VOLUME, DEFAULT_DRUM_PATTERN,
   DEFAULT_BASS_ENABLED, DEFAULT_BASS_VOLUME, DEFAULT_BASS_PATTERN, DEFAULT_BASS_INSTRUMENT,
-  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS, ACCOMPANIMENT_BASE_OCTAVE
+  createDefaultCustomDrumChordPattern, DEFAULT_USER_PIANO_VOLUME, MIN_USER_PIANO_VOLUME, MAX_USER_PIANO_VOLUME, DEFAULT_ACCOMPANIMENT_LAYER, DRUM_INSTRUMENT_OPTIONS, CHORD_INTERVALS, ACCOMPANIMENT_BASE_OCTAVE,
+  DEFAULT_BPM, DEFAULT_TRANSPOSE_SEMITONES, DEFAULT_USER_PIANO_INSTRUMENT,
+  DEFAULT_REVERB_LEVEL, DEFAULT_DELAY_LEVEL, DEFAULT_SWING
 } from './constants';
-import { isChordType, normalizeNoteName, getVoicingOptionsForChord } from './utils';
+import {
+  isChordType, normalizeNoteName, getVoicingOptionsForChord,
+  createLayerId, loadSavedProgressions, persistSavedProgressions
+} from './utils';
 
 
 export interface ChordWithIndex extends ChordDefinition {
@@ -59,10 +64,14 @@ const App: React.FC = () => {
   // State for custom rhythms per layer
   const [customRhythms, setCustomRhythms] = useState<Record<string, BeatDuration[][]>>({});
 
-  // Accompaniment Layers State
-  const [accompanimentLayers, setAccompanimentLayers] = useState<AccompanimentLayer[]>([
-      { id: `layer-${Date.now()}`, ...DEFAULT_ACCOMPANIMENT_LAYER }
-  ]);
+  // Accompaniment Layers State.
+  // The first layer's id comes from useId() rather than Date.now(): it has to be
+  // created during the initial render, and calling an impure function there gives
+  // an id that changes whenever the component happens to re-render.
+  const initialLayerId = useId();
+  const [accompanimentLayers, setAccompanimentLayers] = useState<AccompanimentLayer[]>(
+    () => [{ id: initialLayerId, ...DEFAULT_ACCOMPANIMENT_LAYER }]
+  );
 
   // Main piano state
   const [userPianoVolume, setUserPianoVolume] = useState<number>(DEFAULT_USER_PIANO_VOLUME);
@@ -100,9 +109,9 @@ const App: React.FC = () => {
 
   // New state for playback highlighting and effects
   const [currentlyPlayingChordIndex, setCurrentlyPlayingChordIndex] = useState<number | null>(null);
-  const [reverbLevel, setReverbLevel] = useState(0.1);
-  const [delayLevel, setDelayLevel] = useState(0.1);
-  const [swing, setSwing] = useState(0);
+  const [reverbLevel, setReverbLevel] = useState(DEFAULT_REVERB_LEVEL);
+  const [delayLevel, setDelayLevel] = useState(DEFAULT_DELAY_LEVEL);
+  const [swing, setSwing] = useState(DEFAULT_SWING);
 
   // New state for UI interactivity
   const [isBeat, setIsBeat] = useState(false);
@@ -110,66 +119,14 @@ const App: React.FC = () => {
   const [accompanimentActiveNotes, setAccompanimentActiveNotes] = useState<Set<string>>(new Set());
   const [isTutorialOpen, setIsTutorialOpen] = useState(false); // State for the tutorial modal
 
-  const [savedProgressions, setSavedProgressions] = useState<Record<string, SavedProgressionEntry>>(() => {
-    let loadedProgressions: Record<string, SavedProgressionEntry> = {};
-    try {
-      const item = window.localStorage.getItem(SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY);
-      if (item) {
-        const parsedItem = JSON.parse(item);
-        Object.keys(parsedItem).forEach(key => {
-          const entry = parsedItem[key];
-          if (entry && entry.progression) {
-            // Migration logic for inversions
-            const migratedProgression = entry.progression.map((chord: any) => ({
-              ...chord,
-              inversion: chord.inversion === undefined ? 0 : chord.inversion,
-            }));
-
-            if (!entry.accompanimentLayers) {
-                entry.accompanimentLayers = [{
-                    id: `layer-${Date.now()}`,
-                    instrument: entry.instrument || DEFAULT_ACCOMPANIMENT_LAYER.instrument,
-                    volume: entry.volume || DEFAULT_ACCOMPANIMENT_LAYER.volume,
-                    rhythmPattern: entry.rhythmPattern || DEFAULT_ACCOMPANIMENT_LAYER.rhythmPattern,
-                }];
-            }
-            loadedProgressions[key] = {
-              progression: migratedProgression,
-              accompanimentLayers: entry.accompanimentLayers,
-              customRhythms: entry.customRhythms, // New field
-              customRhythm: entry.customRhythm, // Legacy field for migration
-              drumsEnabled: entry.drumsEnabled === undefined ? DEFAULT_DRUMS_ENABLED : entry.drumsEnabled,
-              drumVolume: entry.drumVolume === undefined ? DEFAULT_DRUM_VOLUME : entry.drumVolume,
-              drumPattern: entry.drumPattern === undefined ? DEFAULT_DRUM_PATTERN : entry.drumPattern,
-              customDrumData: entry.customDrumData || Array(entry.progression.length).fill(null).map(() => createDefaultCustomDrumChordPattern()),
-              bassEnabled: entry.bassEnabled === undefined ? DEFAULT_BASS_ENABLED : entry.bassEnabled,
-              bassVolume: entry.bassVolume === undefined ? DEFAULT_BASS_VOLUME : entry.bassVolume,
-              bassPattern: entry.bassPattern === undefined ? DEFAULT_BASS_PATTERN : entry.bassPattern,
-              bassInstrument: entry.bassInstrument === undefined ? DEFAULT_BASS_INSTRUMENT : entry.bassInstrument,
-              aiBassEvents: entry.aiBassEvents || null,
-            };
-          }
-        });
-      }
-    } catch (error) {
-      console.error("[App.tsx] CRITICAL ERROR reading/parsing saved progressions from localStorage during init:", error);
-      loadedProgressions = {};
-    }
-    return loadedProgressions;
-  });
+  // Reading and migrating stored entries lives in utils/progressionStorage so that
+  // load and save share one code path. It used to be inlined here and duplicated
+  // again in handleLoadProgression, and the two copies had drifted apart.
+  const [savedProgressions, setSavedProgressions] =
+    useState<Record<string, SavedProgressionEntry>>(loadSavedProgressions);
 
   useEffect(() => {
-    try {
-      const stateToSave = { ...savedProgressions };
-      Object.keys(stateToSave).forEach(key => {
-        if (stateToSave[key].customRhythm) {
-          delete stateToSave[key].customRhythm;
-        }
-      });
-      window.localStorage.setItem(SAVED_PROGRESSIONS_LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
-    } catch (error) {
-      console.error("[App.tsx] Error saving progressions to localStorage (in useEffect):", error);
-    }
+    persistSavedProgressions(savedProgressions);
   }, [savedProgressions]);
 
   const progressionWithIndices: ChordWithIndex[] = useMemo(() => {
@@ -333,7 +290,7 @@ const App: React.FC = () => {
   const handleAddAccompanimentLayer = useCallback(() => {
       setAccompanimentLayers(prev => [
           ...prev,
-          { id: `layer-${Date.now()}-${Math.random()}`, ...DEFAULT_ACCOMPANIMENT_LAYER }
+          { id: createLayerId(), ...DEFAULT_ACCOMPANIMENT_LAYER }
       ]);
   }, []);
 
@@ -386,7 +343,7 @@ const App: React.FC = () => {
       alert("和弦進行是空的，無法儲存。");
       return;
     }
-    let name: string | null = window.prompt("請輸入此和弦進行的名稱：");
+    const name: string | null = window.prompt("請輸入此和弦進行的名稱：");
     if (name === null) return;
     const trimmedName = name.trim();
     if (trimmedName === "") {
@@ -396,6 +353,7 @@ const App: React.FC = () => {
     setSavedProgressions(prev => ({
       ...prev,
       [trimmedName]: {
+        version: SAVED_PROGRESSION_SCHEMA_VERSION,
         progression: chordProgression,
         customRhythms: customRhythms,
         accompanimentLayers: accompanimentLayers,
@@ -408,66 +366,74 @@ const App: React.FC = () => {
         bassPattern,
         bassInstrument,
         aiBassEvents,
+        // Global mix and groove. These were previously dropped on save, so a
+        // reloaded progression played back at whatever tempo, transposition and
+        // effect levels happened to be set at the time.
+        bpm: audio.currentBPM,
+        transposition: audio.currentTransposition,
+        userPianoVolume,
+        userPianoInstrument: audio.currentUserPianoInstrument,
+        reverbLevel,
+        delayLevel,
+        swing,
       }
     }));
     alert(`和弦進行 "${trimmedName}" 已儲存！`);
-  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument, aiBassEvents]);
+  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument, aiBassEvents, audio.currentBPM, audio.currentTransposition, audio.currentUserPianoInstrument, userPianoVolume, reverbLevel, delayLevel, swing]);
 
   const handleLoadProgression = useCallback((name: string) => {
     const savedEntry = savedProgressions[name];
-    if (savedEntry) {
-      if (audio.isAccompanimentPlaying) {
-        handleStopAccompaniment();
-      }
-      // Migration for old saves without inversion property
-      const migratedProgression = savedEntry.progression.map(chord => ({
-        ...chord,
-        inversion: chord.inversion === undefined ? 0 : chord.inversion,
-      }));
-      setChordProgression(migratedProgression);
-      
-      if (savedEntry.accompanimentLayers && savedEntry.accompanimentLayers.length > 0) {
-          setAccompanimentLayers(savedEntry.accompanimentLayers);
-      } else {
-          // Legacy migration for layers
-          const legacyLayer = {
-              id: `layer-${Date.now()}`,
-              instrument: savedEntry.instrument || DEFAULT_ACCOMPANIMENT_LAYER.instrument,
-              volume: savedEntry.volume || DEFAULT_ACCOMPANIMENT_LAYER.volume,
-              rhythmPattern: savedEntry.rhythmPattern || DEFAULT_ACCOMPANIMENT_LAYER.rhythmPattern,
-          };
-          setAccompanimentLayers([legacyLayer]);
-      }
-
-      const loadedRhythms: Record<string, BeatDuration[][]> = {};
-      if (savedEntry.customRhythms) {
-          setCustomRhythms(savedEntry.customRhythms);
-      } else { 
-          if (savedEntry.customRhythm) {
-              const layersForMigration = savedEntry.accompanimentLayers || [];
-              layersForMigration.forEach(layer => {
-                  if (layer.rhythmPattern === AccompanimentRhythmPattern.Custom) {
-                      loadedRhythms[layer.id] = savedEntry.customRhythm!;
-                  }
-              });
-          }
-          setCustomRhythms(loadedRhythms);
-      }
-      
-      setDrumsEnabled(savedEntry.drumsEnabled === undefined ? DEFAULT_DRUMS_ENABLED : savedEntry.drumsEnabled);
-      setDrumVolume(savedEntry.drumVolume === undefined ? DEFAULT_DRUM_VOLUME : savedEntry.drumVolume);
-      setDrumPattern(savedEntry.drumPattern === undefined ? DEFAULT_DRUM_PATTERN : savedEntry.drumPattern);
-      setCustomDrumData(savedEntry.customDrumData || Array(savedEntry.progression.length).fill(null).map(() => createDefaultCustomDrumChordPattern()));
-      setBassEnabled(savedEntry.bassEnabled === undefined ? DEFAULT_BASS_ENABLED : savedEntry.bassEnabled);
-      setBassVolume(savedEntry.bassVolume === undefined ? DEFAULT_BASS_VOLUME : savedEntry.bassVolume);
-      setBassPattern(savedEntry.bassPattern === undefined ? DEFAULT_BASS_PATTERN : savedEntry.bassPattern);
-      setBassInstrument(savedEntry.bassInstrument === undefined ? DEFAULT_BASS_INSTRUMENT : savedEntry.bassInstrument);
-      setAiBassEvents(savedEntry.aiBassEvents || null);
-      setDrumPatternClipboard(null);
-      alert(`和弦進行 "${name}" 已載入！`);
-    } else {
+    if (!savedEntry) {
       alert(`無法載入和弦進行 "${name}"。`);
+      return;
     }
+
+    if (audio.isAccompanimentPlaying) {
+      handleStopAccompaniment();
+    }
+
+    // Entries are normalised by loadSavedProgressions() when they are read, so
+    // every field below is already migrated and defaulted. This path used to
+    // repeat the migration inline, with subtly different fallbacks.
+    setChordProgression(savedEntry.progression);
+    setAccompanimentLayers(savedEntry.accompanimentLayers);
+    setCustomRhythms(savedEntry.customRhythms ?? {});
+
+    setDrumsEnabled(savedEntry.drumsEnabled ?? DEFAULT_DRUMS_ENABLED);
+    setDrumVolume(savedEntry.drumVolume ?? DEFAULT_DRUM_VOLUME);
+    setDrumPattern(savedEntry.drumPattern ?? DEFAULT_DRUM_PATTERN);
+    setCustomDrumData(savedEntry.customDrumData ?? []);
+
+    setBassEnabled(savedEntry.bassEnabled ?? DEFAULT_BASS_ENABLED);
+    setBassVolume(savedEntry.bassVolume ?? DEFAULT_BASS_VOLUME);
+    setBassPattern(savedEntry.bassPattern ?? DEFAULT_BASS_PATTERN);
+    setBassInstrument(savedEntry.bassInstrument ?? DEFAULT_BASS_INSTRUMENT);
+    setAiBassEvents(savedEntry.aiBassEvents ?? null);
+
+    // Global mix and groove. Restoring these is what makes a saved progression
+    // actually play back the way it sounded when it was saved.
+    const restoredPianoVolume = savedEntry.userPianoVolume ?? DEFAULT_USER_PIANO_VOLUME;
+    const restoredReverb = savedEntry.reverbLevel ?? DEFAULT_REVERB_LEVEL;
+    const restoredDelay = savedEntry.delayLevel ?? DEFAULT_DELAY_LEVEL;
+    const restoredSwing = savedEntry.swing ?? DEFAULT_SWING;
+
+    audio.setAccompanimentBPM(savedEntry.bpm ?? DEFAULT_BPM);
+    audio.setTransposition(savedEntry.transposition ?? DEFAULT_TRANSPOSE_SEMITONES);
+    audio.setUserPianoInstrument(
+      savedEntry.userPianoInstrument ?? DEFAULT_USER_PIANO_INSTRUMENT
+    );
+
+    setUserPianoVolume(restoredPianoVolume);
+    audio.setUserPianoVolume(restoredPianoVolume);
+    setReverbLevel(restoredReverb);
+    audio.setReverbLevel(restoredReverb);
+    setDelayLevel(restoredDelay);
+    audio.setDelayLevel(restoredDelay);
+    setSwing(restoredSwing);
+    audio.setSwing(restoredSwing);
+
+    setDrumPatternClipboard(null);
+    alert(`和弦進行 "${name}" 已載入！`);
   }, [savedProgressions, audio, handleStopAccompaniment]);
 
   const handleDeleteProgression = useCallback((name: string) => {

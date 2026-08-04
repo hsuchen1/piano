@@ -21,7 +21,8 @@ export const getChordNotes = (chord: ChordDefinition, octaveForRoot: number, tra
 
   try {
     const rootMidi = ToneRef.Frequency(rootFullName).toMidi();
-    let midiValues = intervals.map(interval => rootMidi + interval);
+    // Mutated in place by the inversion loop below, but never reassigned.
+    const midiValues = intervals.map(interval => rootMidi + interval);
 
     // Apply inversions
     if (inversion > 0 && midiValues.length > 1) {
@@ -71,7 +72,7 @@ export const getBassNotesForPattern = (
       const bassNoteMidi = ToneRef.Frequency(bassNote).toMidi();
       octaveNote = ToneRef.Frequency(bassNoteMidi + 12, "midi").toNote();
       secondNote = ToneRef.Frequency(bassNoteMidi + 2, "midi").toNote();
-  } catch (e) {
+  } catch {
       octaveNote = bassNote; // Fallback
       secondNote = thirdNote; // Fallback to the third if something goes wrong
   }

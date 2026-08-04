@@ -6,6 +6,18 @@ interface TutorialModalProps {
   onClose: () => void;
 }
 
+// Declared at module scope on purpose. When these lived inside TutorialModal they
+// were re-created on every render, giving them a new component identity each time,
+// which makes React unmount and remount the entire tutorial subtree instead of
+// updating it.
+const SectionTitle: FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3 className="text-xl font-bold text-blue-300 mt-5 mb-2 border-b border-gray-600 pb-1">{children}</h3>
+);
+
+const ListItem: FC<{ children: React.ReactNode }> = ({ children }) => (
+  <li className="text-gray-300">{children}</li>
+);
+
 const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) {
     return null;
@@ -16,14 +28,6 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
       onClose();
     }
   };
-
-  const SectionTitle: FC<{ children: React.ReactNode }> = ({ children }) => (
-    <h3 className="text-xl font-bold text-blue-300 mt-5 mb-2 border-b border-gray-600 pb-1">{children}</h3>
-  );
-
-  const ListItem: FC<{ children: React.ReactNode }> = ({ children }) => (
-    <li className="text-gray-300">{children}</li>
-  );
 
   return (
     <div
