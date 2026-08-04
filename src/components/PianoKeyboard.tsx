@@ -18,7 +18,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onNoteAttack, onNoteRelea
   return (
     <div className="w-full bg-gradient-to-b from-gray-700 to-gray-800 rounded-lg shadow-xl my-4 p-2 sm:p-4 select-none">
       <div 
-        className="flex items-start relative overflow-x-auto overflow-y-hidden pb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+        className="flex items-start relative overflow-x-auto overflow-y-hidden pb-2 scrollbar-thin"
         style={{ minWidth: '100%', WebkitOverflowScrolling: 'touch' }}
       >
         <div className="flex items-start relative" style={{minWidth: `${estimatedMinWidth}px`}}>

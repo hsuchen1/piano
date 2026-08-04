@@ -41,7 +41,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({ apiKey, onApiKeyChange }) => 
   };
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-3">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md space-y-3">
       <h3 className="text-lg font-semibold text-gray-100 flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />

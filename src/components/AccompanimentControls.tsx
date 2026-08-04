@@ -126,7 +126,7 @@ interface ChordInstrumentPanelProps {
 const ChordInstrumentPanel: React.FC<ChordInstrumentPanelProps> = memo(({ accompanimentLayers, onRemoveAccompanimentLayer, onUpdateAccompanimentLayer, onAddAccompanimentLayer, chordProgressionForCustomEditor, customRhythms, onUpdateCustomBeat }) => (
   <div className="space-y-4">
     {accompanimentLayers.map((layer, index) => (
-      <div key={layer.id} className="bg-gray-500 p-3 rounded-lg space-y-3 relative border-l-2 border-blue-500">
+      <div key={layer.id} className="bg-surface-1 p-3 rounded-lg space-y-3 relative border-l-2 border-blue-500">
         <span className="absolute -top-2 -left-2.5 w-5 h-5 bg-blue-500 text-white text-xs flex items-center justify-center rounded-full font-bold">{index + 1}</span>
         {accompanimentLayers.length > 1 && (
           <button onClick={() => onRemoveAccompanimentLayer(layer.id)} className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors focus:outline-none focus:ring-1 focus:ring-red-400" aria-label={`移除伴奏層 ${index + 1}`}>
@@ -135,17 +135,17 @@ const ChordInstrumentPanel: React.FC<ChordInstrumentPanelProps> = memo(({ accomp
         )}
         <div>
           <label htmlFor={`chordVolume-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">音量: {layer.volume.toFixed(0)} dB</label>
-          <input type="range" id={`chordVolume-${layer.id}`} min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={layer.volume} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'volume', parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+          <input type="range" id={`chordVolume-${layer.id}`} min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={layer.volume} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'volume', parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-blue-500" />
         </div>
         <div>
           <label htmlFor={`chordInstrument-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">樂器</label>
-          <select id={`chordInstrument-${layer.id}`} value={layer.instrument} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'instrument', e.target.value as AccompanimentInstrument)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-blue-500 focus:border-blue-500">
+          <select id={`chordInstrument-${layer.id}`} value={layer.instrument} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'instrument', e.target.value as AccompanimentInstrument)} className="w-full p-2 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500">
             {ACCOMPANIMENT_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </div>
         <div>
           <label htmlFor={`chordRhythmPattern-${layer.id}`} className="block text-sm font-medium text-gray-300 mb-1">節奏型態</label>
-          <select id={`chordRhythmPattern-${layer.id}`} value={layer.rhythmPattern} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'rhythmPattern', e.target.value as AccompanimentRhythmPattern)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-blue-500 focus:border-blue-500">
+          <select id={`chordRhythmPattern-${layer.id}`} value={layer.rhythmPattern} onChange={(e) => onUpdateAccompanimentLayer(layer.id, 'rhythmPattern', e.target.value as AccompanimentRhythmPattern)} className="w-full p-2 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-blue-500 focus:border-blue-500">
             {ACCOMPANIMENT_RHYTHM_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </div>
@@ -190,11 +190,11 @@ const DrumKitPanel: React.FC<DrumKitPanelProps> = memo(({ drumsEnabled, onDrumsE
     {drumsEnabled && (<>
       <div>
         <label htmlFor="drumVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {drumVolume.toFixed(0)} dB</label>
-        <input type="range" id="drumVolume" min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={drumVolume} onChange={(e) => onDrumVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-red-500" />
+        <input type="range" id="drumVolume" min={MIN_VOLUME} max={MAX_VOLUME} step="1" value={drumVolume} onChange={(e) => onDrumVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-red-500" />
       </div>
       <div>
         <label htmlFor="drumPattern" className="block text-sm font-medium text-gray-300 mb-1">鼓組風格 (Pattern)</label>
-        <select id="drumPattern" value={drumPattern} onChange={(e) => onDrumPatternChange(e.target.value as DrumPattern)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-red-500 focus:border-red-500">
+        <select id="drumPattern" value={drumPattern} onChange={(e) => onDrumPatternChange(e.target.value as DrumPattern)} className="w-full p-2 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-red-500 focus:border-red-500">
           {DRUM_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
       </div>
@@ -256,7 +256,7 @@ const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onB
               rows={3}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500 transition-colors placeholder-gray-500"
+              className="w-full p-2.5 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500 transition-colors placeholder-gray-500"
               placeholder="例如：a funky slap bassline, a simple melodic walking bass, a driving rock bass..."
               aria-label="Bassline style prompt"
             />
@@ -277,17 +277,17 @@ const BassGuitarPanel: React.FC<BassGuitarPanelProps> = memo(({ bassEnabled, onB
         {bassEnabled && (<>
           <div>
             <label htmlFor="bassVolume" className="block text-sm font-medium text-gray-300 mb-1">音量: {bassVolume.toFixed(0)} dB</label>
-            <input type="range" id="bassVolume" min={MIN_VOLUME} max={MAX_BASS_VOLUME} step="1" value={bassVolume} onChange={(e) => onBassVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+            <input type="range" id="bassVolume" min={MIN_VOLUME} max={MAX_BASS_VOLUME} step="1" value={bassVolume} onChange={(e) => onBassVolumeChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
           </div>
           <div>
             <label htmlFor="bassInstrument" className="block text-sm font-medium text-gray-300 mb-1">貝斯音色 (Instrument)</label>
-            <select id="bassInstrument" value={bassInstrument} onChange={(e) => onBassInstrumentChange(e.target.value as BassInstrument)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
+            <select id="bassInstrument" value={bassInstrument} onChange={(e) => onBassInstrumentChange(e.target.value as BassInstrument)} className="w-full p-2 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500">
               {BASS_INSTRUMENT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="bassPattern" className="block text-sm font-medium text-gray-300 mb-1">貝斯線風格 (Pattern)</label>
-            <select id="bassPattern" value={bassPattern} onChange={(e) => onBassPatternChange(e.target.value as BassPattern)} className="w-full p-2 bg-gray-400 border border-gray-500 rounded-md text-gray-900 focus:ring-yellow-500 focus:border-yellow-500">
+            <select id="bassPattern" value={bassPattern} onChange={(e) => onBassPatternChange(e.target.value as BassPattern)} className="w-full p-2 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-yellow-500 focus:border-yellow-500">
               {BASS_PATTERN_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </div>
@@ -327,15 +327,15 @@ const EffectsPanel: React.FC<EffectsPanelProps> = memo(({ reverbLevel, onReverbL
     <h4 className="text-md font-semibold text-gray-200">全域效果與律動</h4>
     <div>
       <label htmlFor="reverb" className="block text-sm font-medium text-gray-300 mb-1">殘響 (Reverb): {(reverbLevel * 100).toFixed(0)}%</label>
-      <input type="range" id="reverb" min="0" max="1" step="0.01" value={reverbLevel} onChange={(e) => onReverbLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-teal-500" />
+      <input type="range" id="reverb" min="0" max="1" step="0.01" value={reverbLevel} onChange={(e) => onReverbLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-teal-500" />
     </div>
      <div>
       <label htmlFor="delay" className="block text-sm font-medium text-gray-300 mb-1">延遲 (Delay): {(delayLevel * 100).toFixed(0)}%</label>
-      <input type="range" id="delay" min="0" max="1" step="0.01" value={delayLevel} onChange={(e) => onDelayLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+      <input type="range" id="delay" min="0" max="1" step="0.01" value={delayLevel} onChange={(e) => onDelayLevelChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
     </div>
     <div>
       <label htmlFor="swing" className="block text-sm font-medium text-gray-300 mb-1">搖擺律動 (Swing): {(swing * 100).toFixed(0)}%</label>
-      <input type="range" id="swing" min="0" max="1" step="0.01" value={swing} onChange={(e) => onSwingChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-pink-500" />
+      <input type="range" id="swing" min="0" max="1" step="0.01" value={swing} onChange={(e) => onSwingChange(parseFloat(e.target.value))} className="w-full h-2.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-pink-500" />
     </div>
   </div>
 ));
@@ -362,7 +362,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
   const playButtonDisabled = !isAudioReady || chordProgressionEmpty;
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-4">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md space-y-4">
       {/* --- Main Controls --- */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -402,7 +402,7 @@ const AccompanimentControls: React.FC<AccompanimentControlsProps> = ({
       </div>
 
       {/* --- Tab Content --- */}
-      <div className="bg-gray-600 p-3 rounded-b-md rounded-r-md min-h-[200px]">
+      <div className="bg-surface-2 p-3 rounded-b-md rounded-r-md min-h-[200px]">
         {/* Groups are spread, not passed as objects, so each memoised panel still
             compares individual values instead of a fresh wrapper reference. */}
         {activeTab === 'chords' && <ChordInstrumentPanel

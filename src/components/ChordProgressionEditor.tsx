@@ -140,7 +140,7 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
   const canPerformAiAction = isApiKeySet && progression.length > 0;
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md h-full flex flex-col">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md h-full flex flex-col">
       {isStyleModalOpen && (
          <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={() => setIsStyleModalOpen(false)}>
           <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
@@ -150,7 +150,7 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
               rows={3}
               value={stylePrompt}
               onChange={(e) => setStylePrompt(e.target.value)}
-              className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
+              className="w-full p-2.5 bg-surface-2 border border-surface-line rounded-md text-gray-100 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
               placeholder="例如：smooth jazz trio, epic cinematic score, 8-bit video game music..."
               aria-label="Style prompt"
             />
@@ -203,7 +203,7 @@ const ChordProgressionEditor: React.FC<ChordProgressionEditorProps> = ({
         </div>
       ) : (
         <ul 
-            className="space-y-0.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-600"
+            className="space-y-0.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
             onDragLeave={() => setDragIndicatorIndex(null)}
         >
           {progression.map((chord, index) => (

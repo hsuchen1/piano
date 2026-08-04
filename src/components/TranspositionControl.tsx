@@ -17,7 +17,7 @@ const TranspositionControl: React.FC<TranspositionControlProps> = ({ currentTran
   };
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md">
       <h3 className="text-lg font-semibold mb-3 text-center text-gray-100">移調控制</h3>
       <div className="flex items-center justify-center space-x-1 sm:space-x-2">
         <button

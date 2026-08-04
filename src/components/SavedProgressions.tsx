@@ -12,12 +12,12 @@ const SavedProgressions: React.FC<SavedProgressionsProps> = ({ savedProgressions
   const progressionNames = Object.keys(savedProgressions);
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">已儲存的和弦進行</h3>
       {progressionNames.length === 0 ? (
         <p className="text-gray-400 text-sm">沒有已儲存的和弦進行。</p>
       ) : (
-        <ul className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-600 pr-1">
+        <ul className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin pr-1">
           {progressionNames.map(name => (
             <li key={name} className="flex justify-between items-center p-2.5 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">
               <span className="text-sm text-gray-200 truncate mr-2" title={name}>{name}</span>

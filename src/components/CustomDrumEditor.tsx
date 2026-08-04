@@ -77,7 +77,7 @@ const CustomDrumEditor: React.FC<CustomDrumEditorProps> = ({
         </div>
       )}
 
-      <div className="p-3 my-2 bg-gray-550 rounded-md space-y-3 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-700">
+      <div className="p-3 my-2 bg-surface-1 border border-surface-line rounded-md space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
         <h4 className="text-sm font-semibold text-gray-200 mb-1">自訂鼓組編輯器 (Custom Drum Editor)</h4>
         {chordProgression.map((chordItem, chordIdx) => {
           const currentChordDrumPattern = customDrumData[chordItem.originalIndex] || createDefaultCustomDrumChordPattern();

@@ -47,14 +47,14 @@ const CustomRhythmEditor: React.FC<CustomRhythmEditorProps> = ({
   }
 
   return (
-    <div className="p-3 my-2 bg-gray-600 rounded-md space-y-2 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-700">
+    <div className="p-3 my-2 bg-surface-1 border border-surface-line rounded-md space-y-2 max-h-60 overflow-y-auto scrollbar-thin">
       <h4 className="text-sm font-semibold text-gray-200 mb-2">自訂節奏編輯器 (每拍音符時值)</h4>
       {chordProgression.map((chordItem, chordIdx) => {
         const chordBeats = customRhythmDataForLayer[chordItem.originalIndex] || 
                            Array(4).fill(DEFAULT_CUSTOM_BEAT_DURATION);
         
         return (
-          <div key={chordItem.id} className="p-2 bg-gray-500 rounded hover:bg-gray-450 transition-colors">
+          <div key={chordItem.id} className="p-2 bg-surface-2 rounded hover:bg-gray-600 transition-colors">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-mono text-gray-200 truncate" title={`${chordItem.root}${chordItem.type}`}>
                 {chordIdx + 1}. {chordItem.root}{chordItem.type}

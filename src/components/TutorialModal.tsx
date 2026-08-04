@@ -55,7 +55,7 @@ const TutorialModal: FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           </button>
         </header>
         
-        <main className="p-6 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-600">
+        <main className="p-6 overflow-y-auto space-y-4 scrollbar-thin">
           <div>
             <h2 className="text-2xl font-semibold text-purple-300">歡迎來到互動鋼琴工作室！</h2>
             <p className="text-gray-300 mt-1">釋放您的音樂創意！在這裡，您不僅可以自由彈奏、編曲，更能讓 AI 成為您的智慧編曲夥伴，輕鬆打造專屬伴奏。</p>

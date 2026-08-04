@@ -536,7 +536,7 @@ const App: React.FC = () => {
           <TutorialModal isOpen onClose={() => setIsTutorialOpen(false)} />
         </Suspense>
       )}
-      <div className="min-h-screen bg-gray-800 text-gray-100 selection:bg-purple-500 selection:text-white">
+      <div className="min-h-screen bg-surface-0 text-gray-100 selection:bg-purple-500 selection:text-white">
         <div className="container mx-auto p-2 sm:p-4 flex flex-col items-center space-y-4 sm:space-y-6">
           <header className="text-center my-3 sm:my-5">
             <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
@@ -567,7 +567,7 @@ const App: React.FC = () => {
                 currentTransposition={audio.currentTransposition}
                 onTransposeChange={audio.setTransposition}
               />
-              <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-3">
+              <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md space-y-3">
                    <h3 className="text-lg font-semibold text-gray-100">主鍵盤設定 (Main Keyboard)</h3>
                    <div>
                       <label htmlFor="userPianoInstrument" className="block text-sm font-medium text-gray-300 mb-1">音色 (Instrument)</label>

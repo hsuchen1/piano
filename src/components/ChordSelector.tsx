@@ -44,7 +44,7 @@ const ChordSelector: React.FC<ChordSelectorProps> = ({ onAddChord }) => {
   };
 
   return (
-    <div className="p-4 bg-gray-700 rounded-lg shadow-md space-y-4">
+    <div className="p-4 bg-surface-1 border border-surface-line rounded-lg shadow-md space-y-4">
       <h3 className="text-lg font-semibold text-gray-100">新增和弦至進行</h3>
       <div>
         <label htmlFor="rootNote" className="block text-sm font-medium text-gray-300 mb-1">根音</label>
