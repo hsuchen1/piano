@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useDialogs } from '../ui/dialogContext';
 
 interface ApiSettingsProps {
   apiKey: string | null;
@@ -7,6 +8,7 @@ interface ApiSettingsProps {
 }
 
 const ApiSettings: React.FC<ApiSettingsProps> = ({ apiKey, onApiKeyChange }) => {
+  const { showToast, confirm } = useDialogs();
   const [inputValue, setInputValue] = useState('');
 
   // Derived straight from the prop. This used to be state kept in sync by an
@@ -20,16 +22,22 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({ apiKey, onApiKeyChange }) => 
       localStorage.setItem('gemini_api_key', trimmedKey);
       onApiKeyChange(trimmedKey);
       setInputValue('');
-      alert('API 金鑰已儲存至您的瀏覽器。');
+      showToast('API 金鑰已儲存至您的瀏覽器。', 'success');
     }
   };
 
-  const handleClear = () => {
-    if (window.confirm('確定要清除已儲存的 API 金鑰嗎？')) {
-      localStorage.removeItem('gemini_api_key');
-      onApiKeyChange(null);
-      alert('API 金鑰已清除。');
-    }
+  const handleClear = async () => {
+    const confirmed = await confirm({
+      title: '清除 API 金鑰',
+      message: '確定要清除已儲存的 API 金鑰嗎？清除後 AI 功能將無法使用。',
+      confirmLabel: '清除',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    localStorage.removeItem('gemini_api_key');
+    onApiKeyChange(null);
+    showToast('API 金鑰已清除。', 'success');
   };
 
   return (

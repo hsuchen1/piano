@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import DialogProvider from './ui/DialogProvider';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -27,10 +28,14 @@ if (!rootElement) {
 
 // Render-phase failures are handled by ErrorBoundary, which sits inside the root
 // so that React can recover the subtree instead of losing the whole page.
+// DialogProvider sits inside the boundary so a crash in a dialog is still caught,
+// and outside App so every component can reach the toast and confirm APIs.
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <DialogProvider>
+        <App />
+      </DialogProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

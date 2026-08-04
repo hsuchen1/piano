@@ -38,9 +38,13 @@ import {
   loadSavedProgressions, persistSavedProgressions
 } from './utils';
 import { useChordProgression } from './hooks/useChordProgression';
+import { useDialogs } from './ui/dialogContext';
 
 
 const App: React.FC = () => {
+  // In-app replacements for alert/confirm/prompt. See ui/DialogProvider.
+  const { showToast, confirm, prompt } = useDialogs();
+
   // `pressedComputerKeys` drives the highlight on the on-screen keyboard, while
   // `heldComputerKeys` is the mutable set the key handlers read to de-duplicate
   // auto-repeat. Keeping them separate lets the listener effect stay mounted.
@@ -203,18 +207,32 @@ const App: React.FC = () => {
     audio.setSwing(amount);
   }, [audio]);
 
-  const handleSaveCurrentProgression = useCallback(() => {
+  const handleSaveCurrentProgression = useCallback(async () => {
     if (chordProgression.length === 0) {
-      alert("和弦進行是空的，無法儲存。");
+      showToast("和弦進行是空的，無法儲存。", 'error');
       return;
     }
-    const name: string | null = window.prompt("請輸入此和弦進行的名稱：");
-    if (name === null) return;
-    const trimmedName = name.trim();
-    if (trimmedName === "") {
-      alert("名稱不能為空。");
-      return;
+
+    // The dialog already rejects an all-whitespace name, so there is no separate
+    // "name cannot be empty" path to handle here any more.
+    const trimmedName = await prompt({
+      title: '儲存和弦進行',
+      label: '請輸入此和弦進行的名稱',
+      placeholder: '例如：抒情前奏',
+    });
+    if (trimmedName === null) return;
+
+    const isOverwrite = trimmedName in savedProgressions;
+    if (isOverwrite) {
+      const confirmed = await confirm({
+        title: '覆寫既有進行',
+        message: `已經有名為 "${trimmedName}" 的和弦進行，要覆寫它嗎？`,
+        confirmLabel: '覆寫',
+        destructive: true,
+      });
+      if (!confirmed) return;
     }
+
     setSavedProgressions(prev => ({
       ...prev,
       [trimmedName]: {
@@ -243,13 +261,13 @@ const App: React.FC = () => {
         swing,
       }
     }));
-    alert(`和弦進行 "${trimmedName}" 已儲存！`);
-  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument, aiBassEvents, audio.currentBPM, audio.currentTransposition, audio.currentUserPianoInstrument, userPianoVolume, reverbLevel, delayLevel, swing]);
+    showToast(`和弦進行 "${trimmedName}" 已儲存！`, 'success');
+  }, [chordProgression, customRhythms, accompanimentLayers, drumsEnabled, drumVolume, drumPattern, customDrumData, bassEnabled, bassVolume, bassPattern, bassInstrument, aiBassEvents, audio.currentBPM, audio.currentTransposition, audio.currentUserPianoInstrument, userPianoVolume, reverbLevel, delayLevel, swing, savedProgressions, showToast, prompt, confirm]);
 
   const handleLoadProgression = useCallback((name: string) => {
     const savedEntry = savedProgressions[name];
     if (!savedEntry) {
-      alert(`無法載入和弦進行 "${name}"。`);
+      showToast(`無法載入和弦進行 "${name}"。`, 'error');
       return;
     }
 
@@ -290,19 +308,25 @@ const App: React.FC = () => {
     setSwing(restoredSwing);
     audio.setSwing(restoredSwing);
 
-    alert(`和弦進行 "${name}" 已載入！`);
-  }, [savedProgressions, audio, restoreProgression]);
+    showToast(`和弦進行 "${name}" 已載入！`, 'success');
+  }, [savedProgressions, audio, restoreProgression, showToast]);
 
-  const handleDeleteProgression = useCallback((name: string) => {
-    if (window.confirm(`確定要刪除和弦進行 "${name}" 嗎？`)) {
-        setSavedProgressions(prev => {
-        const newState = { ...prev };
-        delete newState[name];
-        return newState;
-        });
-        alert(`和弦進行 "${name}" 已刪除！`);
-    }
-  }, []);
+  const handleDeleteProgression = useCallback(async (name: string) => {
+    const confirmed = await confirm({
+      title: '刪除和弦進行',
+      message: `確定要刪除和弦進行 "${name}" 嗎？此動作無法復原。`,
+      confirmLabel: '刪除',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    setSavedProgressions(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    showToast(`和弦進行 "${name}" 已刪除！`, 'success');
+  }, [confirm, showToast]);
 
   const handleNoteAttack = useCallback((noteName: NoteName, octave: number, isComputerKey: boolean = false) => {
     if (audio.isPianoLoading) return;
@@ -337,14 +361,22 @@ const App: React.FC = () => {
   const handleGenerateProgression = useCallback(async (prompt: string, numChords: string) => {
     const key = requireApiKey('chords');
     if (!key) return;
-    if (chordProgression.length > 0 && !window.confirm("AI 將會取代您目前的和弦進行。確定要繼續嗎？")) return;
+    if (chordProgression.length > 0) {
+      const confirmed = await confirm({
+        title: 'AI 和弦生成',
+        message: 'AI 將會取代您目前的和弦進行，現有內容會遺失。確定要繼續嗎？',
+        confirmLabel: '繼續生成',
+        destructive: true,
+      });
+      if (!confirmed) return;
+    }
 
     const progression = await run(
       { kind: 'chords', errorLabel: 'AI 和弦生成失敗' },
       () => generateChordProgression(key, prompt, numChords)
     );
     if (progression) applyGeneratedProgression(progression);
-  }, [requireApiKey, chordProgression.length, run, applyGeneratedProgression]);
+  }, [requireApiKey, chordProgression.length, run, applyGeneratedProgression, confirm]);
 
   const handleStyleTransfer = useCallback(async (prompt: string) => {
     if (chordProgression.length === 0) return;
@@ -362,7 +394,12 @@ const App: React.FC = () => {
     if (chordProgression.length < 2) return;
     const key = requireApiKey('voicing');
     if (!key) return;
-    if (!window.confirm("這將會由 AI 自動調整您所有和弦的轉位以獲得更流暢、音高更穩定的聲音。確定要繼續嗎？")) return;
+    const confirmed = await confirm({
+      title: 'AI 智慧轉位',
+      message: '這將會由 AI 自動調整您所有和弦的轉位，以獲得更流暢、音高更穩定的聲音。確定要繼續嗎？',
+      confirmLabel: '開始調整',
+    });
+    if (!confirmed) return;
 
     const voicingOptions = chordProgression.map(chord => ({
       chord_name: `${chord.root}${chord.type}`,
@@ -380,7 +417,7 @@ const App: React.FC = () => {
     chordProgression.forEach((chord, index) => {
       handleUpdateChordInversion(chord.id, inversions[index]);
     });
-  }, [chordProgression, requireApiKey, run, handleUpdateChordInversion]);
+  }, [chordProgression, requireApiKey, run, handleUpdateChordInversion, confirm]);
 
   const handleGenerateAIBassline = useCallback(async (prompt: string) => {
     if (chordProgression.length === 0) return;
