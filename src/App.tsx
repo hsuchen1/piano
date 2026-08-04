@@ -546,16 +546,32 @@ const App: React.FC = () => {
       )}
       <div className="min-h-screen bg-surface-0 text-gray-100 selection:bg-purple-500 selection:text-white">
         <div className="container mx-auto p-2 sm:p-4 flex flex-col items-center space-y-4 sm:space-y-6">
-          <header className="text-center my-3 sm:my-5">
-            <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+          <header className="text-center my-4 sm:my-8 relative w-full max-w-4xl mx-auto px-4">
+            {/* Soft background ambient glow */}
+            <div className="absolute inset-0 max-w-lg mx-auto h-32 blur-3xl bg-blue-500/15 rounded-full pointer-events-none" aria-hidden="true" />
+
+            {/* Studio Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 mb-3 sm:mb-4 rounded-full bg-surface-1 border border-surface-line text-xs font-semibold text-blue-400 tracking-wider uppercase shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              Interactive Piano Studio
+            </div>
+
+            {/* Title */}
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight drop-shadow-xl leading-tight sm:leading-none">
               互動鋼琴工作室
             </h1>
-            <p className="text-gray-300 mt-2 text-xs sm:text-base">釋放您的音樂創意！在這裡，您不僅可以自由彈奏、編曲，更能讓 AI 成為您的智慧編曲夥伴，輕鬆打造專屬伴奏。</p>
+
+            {/* Subtitle */}
+            <p className="text-gray-300 mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-medium">
+              自由彈奏、即時編曲與 AI 智慧伴奏的專業琴房夥伴
+            </p>
+
+            {/* Tutorial Button */}
             <button
               onClick={() => setIsTutorialOpen(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800"
+              className="mt-4 inline-flex items-center px-4 py-2 bg-surface-1 hover:bg-surface-2 border border-surface-line text-gray-200 hover:text-white font-medium text-xs sm:text-sm rounded-lg transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
               使用教學
