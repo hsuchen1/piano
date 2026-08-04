@@ -1,4 +1,5 @@
 
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -17,10 +18,12 @@ const base = process.env.NODE_ENV === 'production' ? `/${repositoryName}/` : '/'
 
 export default defineConfig({
   base: base,
-  build: {
-    rollupOptions: {
-      // No longer needed, we want to bundle dependencies.
-    }
+  // Keep the `@/*` alias in tsconfig.json working at build time too, so TypeScript
+  // and Vite resolve it identically.
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
   plugins: [
     react(),

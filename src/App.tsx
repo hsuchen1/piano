@@ -2,9 +2,10 @@
 
 
 
+
 import React from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { GoogleGenAI, Type } from "https://esm.sh/@google/genai@^1.9.0";
+import { GoogleGenAI, Type } from "@google/genai";
 
 import PianoKeyboard from './components/PianoKeyboard';
 import TranspositionControl from './components/TranspositionControl';
@@ -31,6 +32,24 @@ import { isChordType, normalizeNoteName, getVoicingOptionsForChord } from './uti
 
 export interface ChordWithIndex extends ChordDefinition {
   originalIndex: number;
+}
+
+/**
+ * Gemini's `response.text` is optional: it is `undefined` when the model returns
+ * no usable candidate (safety block, empty completion, quota trip). Passing that
+ * straight to JSON.parse throws an opaque `"undefined" is not valid JSON`, which
+ * surfaces to the user as gibberish. Distinguish "no response" from "malformed
+ * response" so the error message is actionable.
+ */
+function parseAiJson<T>(text: string | undefined): T {
+  if (!text || !text.trim()) {
+    throw new Error('AI 未回傳任何內容（可能被安全機制阻擋或額度已用盡），請稍後再試或調整提示詞。');
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('AI 回傳的內容不是有效的 JSON 格式，請重試。');
+  }
 }
 
 const App: React.FC = () => {
@@ -64,7 +83,13 @@ const App: React.FC = () => {
   const [aiBassEvents, setAiBassEvents] = useState<AiNoteEvent[] | null>(null);
 
   // API Key and AI Generation State
-  const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem('gemini_api_key'));
+  // Dev-only convenience: pre-fill from .env.local (VITE_GEMINI_API_KEY).
+  // Guarded by import.meta.env.DEV so the key can never be inlined into the
+  // public production bundle deployed to GitHub Pages.
+  const [apiKey, setApiKey] = useState<string | null>(() =>
+    (import.meta.env.DEV ? import.meta.env.VITE_GEMINI_API_KEY : undefined) ||
+    localStorage.getItem('gemini_api_key')
+  );
   const [generationState, setGenerationState] = useState<{
     type: 'chords' | 'style' | 'drums' | 'voicing' | 'bass' | null;
     isLoading: boolean;
@@ -557,7 +582,7 @@ const App: React.FC = () => {
         }
       });
 
-      validateAndSetProgression(JSON.parse(response.text));
+      validateAndSetProgression(parseAiJson(response.text));
       setGenerationState({ type: null, isLoading: false, error: null });
 
     } catch (error) {
@@ -598,7 +623,7 @@ const App: React.FC = () => {
             }
         });
 
-        const newChords = JSON.parse(response.text);
+        const newChords = parseAiJson<unknown[]>(response.text);
         if (newChords.length !== chordProgression.length) {
             throw new Error(`AI returned ${newChords.length} chords, but expected ${chordProgression.length}.`);
         }
@@ -644,7 +669,7 @@ const App: React.FC = () => {
         }
       });
 
-      const newInversions = JSON.parse(response.text);
+      const newInversions = parseAiJson<number[]>(response.text);
       if (!Array.isArray(newInversions) || newInversions.length !== chordProgression.length) {
         throw new Error(`AI returned an invalid response. Expected an array of ${chordProgression.length} numbers.`);
       }
@@ -705,7 +730,7 @@ const App: React.FC = () => {
                 }
             }
         });
-        const newBassEvents = JSON.parse(response.text) as AiNoteEvent[];
+        const newBassEvents = parseAiJson<AiNoteEvent[]>(response.text);
         setAiBassEvents(newBassEvents);
         setGenerationState({ type: null, isLoading: false, error: null });
 
@@ -782,7 +807,7 @@ const App: React.FC = () => {
             }
         });
 
-        const newPattern = JSON.parse(response.text) as CustomDrumChordPattern;
+        const newPattern = parseAiJson<CustomDrumChordPattern>(response.text);
         handleSetCustomDrumPatternForChord(chordOriginalIndex, newPattern);
         setGenerationState({ type: null, isLoading: false, error: null });
 

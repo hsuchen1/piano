@@ -1,9 +1,5 @@
 import { NoteName, ChordType, PianoKeyData, AccompanimentInstrument, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration, DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumChordPattern, AccompanimentLayer } from './types';
-import * as Tone from 'tone';
-import type { MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, MonoSynthOptions, SynthOptions as ToneSynthOptions, OmniOscillatorOptions, EnvelopeOptions, FilterOptions, FrequencyEnvelopeOptions, NoiseType, ToneOscillatorType, EnvelopeCurve, FatOscillatorOptions, FMOscillatorOptions, PulseOscillatorOptions, AMOscillatorOptions, NoiseOptions as ToneNoiseOptions } from 'tone';
-
-
-const ToneRef = Tone;
+import type { MembraneSynthOptions, NoiseSynthOptions, MetalSynthOptions, SynthOptions as ToneSynthOptions } from 'tone';
 
 export const NOTE_NAMES_SHARP: NoteName[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export const NOTE_NAMES_FLAT: string[] = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];

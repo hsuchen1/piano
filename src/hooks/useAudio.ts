@@ -3,12 +3,12 @@ import React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import {
-    ChordDefinition, AccompanimentInstrument, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
+    AccompanimentInstrument, NoteName, UserPianoInstrument, AccompanimentRhythmPattern, BeatDuration,
     DrumInstrument, DrumPattern, BassInstrument, BassPattern, CustomDrumProgressionData, CustomDrumChordPattern,
     AccompanimentLayer, AiNoteEvent
 } from '../types';
 import {
-  getNoteFullName, DEFAULT_BPM, DEFAULT_USER_PIANO_VOLUME,
+  getNoteFullName, DEFAULT_BPM,
   ACCOMPANIMENT_SYNTH_PIANO_CONFIG, ACCOMPANIMENT_MELLOW_SYNTH_CONFIG,
   USER_PIANO_SOUND_CONFIGS, DEFAULT_USER_PIANO_INSTRUMENT,
   SAMPLED_GRAND_PIANO_URLS, SAMPLED_GRAND_PIANO_BASE_URL,
@@ -19,7 +19,7 @@ import {
 } from '../constants';
 import { getChordNotes, getBassNotesForPattern } from '../utils';
 import type { ChordWithIndex } from '../App';
-import type { Synth, FMSynthOptions, AMSynthOptions, SynthOptions } from 'tone';
+import type { FMSynthOptions, AMSynthOptions } from 'tone';
 
 const ToneRef = Tone;
 // Use Vite's env variable for robust pathing in different deployment scenarios (root vs. subdirectory)

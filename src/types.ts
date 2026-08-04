@@ -152,7 +152,9 @@ export interface SavedProgressionEntry {
   bassVolume?: number;
   bassPattern?: BassPattern;
   bassInstrument?: BassInstrument;
-  aiBassEvents?: AiNoteEvent[];
+  // `null` is a meaningful value here: it means "AI bassline explicitly cleared",
+  // which is what App state holds, so saved entries must be able to round-trip it.
+  aiBassEvents?: AiNoteEvent[] | null;
   
   // New custom rhythms structure
   customRhythms?: Record<string, BeatDuration[][]>;
